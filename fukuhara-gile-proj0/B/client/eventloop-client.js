@@ -32,6 +32,7 @@ var serverPort = process.argv[3];
 // Send initial HELLO to server
 //////////////////////////////////
 var buf = new Buffer(makeHeaderString(0));
+console.log("sending from " + serverHost + ", " + serverPort);
 clientSocket.send(buf, HEADER_SIZE, 0, serverPort, serverHost, function() {
   // Timeout if no response within TIMEOUT_DURATION milliseconds
   timer = setTimeout(function() {
