@@ -1,5 +1,13 @@
+///////////////////////////////////////
+// Require statements
+///////////////////////////////////////
 var datagram = require('dgram');
+var readline = require('readline');
+var tty = require('tty');
 
+///////////////////////////////////////
+// Global variables
+///////////////////////////////////////
 var timer = null;
 var closing = false;
 var TIMEOUT_DURATION = 5000;
@@ -8,7 +16,11 @@ var sequenceNum = 0;
 var alivesReceived = 0;
 var sessionId = Math.floor((Math.random() * 2147483647)).toString(2);
 
-// Get the host and port number from the command line arguments
+var clientSocket = datagram.createSocket('udp4');
+
+///////////////////////////////////////
+// Process command line arguments
+///////////////////////////////////////
 if (process.argv.length != 4) {
   console.log("Usage: ./client <server> <port> (using script)");
   process.exit(1);
@@ -16,14 +28,10 @@ if (process.argv.length != 4) {
 var serverHost = process.argv[2];
 var serverPort = process.argv[3];
 
-var clientSocket = datagram.createSocket('udp4');
-
-// Create HELLO header
-var buf = new Buffer(makeHeaderString(0));
-
 //////////////////////////////////
 // Send initial HELLO to server
 //////////////////////////////////
+var buf = new Buffer(makeHeaderString(0));
 clientSocket.send(buf, HEADER_SIZE, 0, serverPort, serverHost, function() {
   // Timeout if no response within TIMEOUT_DURATION milliseconds
   timer = setTimeout(function() {
@@ -36,8 +44,9 @@ clientSocket.send(buf, HEADER_SIZE, 0, serverPort, serverHost, function() {
   }, TIMEOUT_DURATION);
 });
 
-
-// Look for messages from the server and delegate depending on type
+//////////////////////////////////
+// Handle messages from the server
+//////////////////////////////////
 clientSocket.on('message', function(message) {
   // If hello, cancel timer and transition to ready
   var msgType = message.substring(25, 33);
@@ -68,12 +77,19 @@ clientSocket.on('message', function(message) {
 /////////////////////////////////////////////
 // Register handler for user input
 /////////////////////////////////////////////
-process.stdin.on('data', function(dataPiece) {
-  var input = dataPiece.toString().trim();
+var reader = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+  terminal: false
+});
+
+reader.on('line', function(line) {
+  var input = line.toString().trim();
   if (input == "q") {
     sendGoodbye();
+    return;
   }
-  var data = makeHeaderString(1) + dataPiece.toString().trim();
+  var data = makeHeaderString(1) + input;
   var message = new Buffer(data);
 
   // Take the user input and send it to the server as DATA
@@ -96,13 +112,23 @@ process.stdin.on('data', function(dataPiece) {
   }
 });
 
+
+//////////////////////////////////
+// Handle eof and user cancelling
+//////////////////////////////////
+var haveTTY = tty.isatty(process.stdin);
+
 process.stdin.on('end', function() {
+  if (haveTTY) {
+    process.exit(0);
+  }
+
   // Try to wait until all outgoing messages have been put on the network
-  // We will wait at most 20 seconds
+  // We will wait at most 10 seconds
   var tries = 0;
   console.log("closing connection...");
-  while(alivesReceived != sequenceNum && tries < 20) {
-    setTimeout(function() {}, 1000);
+  while(alivesReceived < sequenceNum && tries < 20) {
+    setTimeout(function() {}, 500);
     tries++;
   }
   console.log("eof");
@@ -132,6 +158,9 @@ function makeHeaderString(requestType) {
   return magic + version + command + binarySequence + sessionId;
 }
 
+///////////////////////////////////
+// Send a GOODBYE message to server
+///////////////////////////////////
 function sendGoodbye() {
   // send a GOODBYE to the server
   var goodbyeHeader = makeHeaderString(3);
