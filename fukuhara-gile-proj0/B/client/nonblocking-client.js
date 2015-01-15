@@ -134,7 +134,8 @@ function makeHeaderString(requestType) {
 function sendGoodbye() {
   // send a GOODBYE to the server
   var goodbyeHeader = makeHeaderString(3);
-  clientSocket.send(goodbyeHeader, HEADER_SIZE, 0, serverPort, serverHost, function() {
-    closing = true;
+  clientSocket.send(new Buffer(goodbyeHeader), HEADER_SIZE, 0, serverPort,
+    serverHost, function() {
+      closing = true;
   });
 }
