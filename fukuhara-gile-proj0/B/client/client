@@ -1,0 +1,3 @@
+#!/bin/bash
+
+node nonblocking-client.js $1 $2
