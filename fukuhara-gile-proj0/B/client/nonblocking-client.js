@@ -10,7 +10,7 @@ var sessionId = Math.floor((Math.random() * 2147483647)).toString(2);
 
 // Get the host and port number from the command line arguments
 if (process.argv.length != 4) {
-  console.log("Usage: nodejs client <server> <port>");
+  console.log("Usage: ./client <server> <port> (using script)");
   process.exit(1);
 }
 var serverHost = process.argv[2];
@@ -27,7 +27,7 @@ var buf = new Buffer(makeHeaderString(0));
 clientSocket.send(buf, HEADER_SIZE, 0, serverPort, serverHost, function() {
   // Timeout if no response within TIMEOUT_DURATION milliseconds
   timer = setTimeout(function() {
-    console.log("No response from " + serverHost);
+    console.log("No HELLO response from " + serverHost);
     if (closing) { process.exit(0); }
     timer = null;
 
@@ -139,7 +139,7 @@ function sendGoodbye() {
     serverHost, function() {
       closing = true;
       setTimeout(function() {
-        console.log("No response from server. Closing connection.");
+        console.log("No GOODBYE response from server. Closing connection.");
         process.exit(0);
       }, 5000);
   });
