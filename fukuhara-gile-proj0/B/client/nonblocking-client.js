@@ -125,7 +125,7 @@ function makeHeaderString(requestType) {
     command = "00000011";
   }
   var binarySequence = sequenceNum.toString(2);
-   for(var i=0; i<(32-binarySequence.length()); ++i){
+   for(var i=0; i<(32-binarySequence.length); ++i){
     binarySequence = "0" + binarySequence;
   }
   return magic + version + command + binarySequence + sessionId;
