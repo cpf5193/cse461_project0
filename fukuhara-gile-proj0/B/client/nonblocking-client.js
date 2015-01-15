@@ -103,6 +103,7 @@ process.stdin.on('end', function() {
   console.log("closing connection...");
   while(alivesReceived != sequenceNum && tries < 20) {
     setTimeout(function() {}, 1000);
+    tries++;
   }
   console.log("eof");
   sendGoodbye();
@@ -137,5 +138,9 @@ function sendGoodbye() {
   clientSocket.send(new Buffer(goodbyeHeader), HEADER_SIZE, 0, serverPort,
     serverHost, function() {
       closing = true;
+      setTimeout(function() {
+        console.log("No response from server. Closing connection.");
+        process.exit(0);
+      }, 5000);
   });
 }
