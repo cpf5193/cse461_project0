@@ -125,7 +125,7 @@ function makeHeaderString(requestType) {
     command = "00000011";
   }
   var binarySequence = sequenceNum.toString(2);
-   for(var i=0; i<(32-binarySequence.length()); ++i){
+   for(var i=0; i<(32-binarySequence.length); ++i){
     binarySequence = "0" + binarySequence;
   }
   return magic + version + command + binarySequence + sessionId;
@@ -134,7 +134,8 @@ function makeHeaderString(requestType) {
 function sendGoodbye() {
   // send a GOODBYE to the server
   var goodbyeHeader = makeHeaderString(3);
-  clientSocket.send(goodbyeHeader, HEADER_SIZE, 0, serverPort, serverHost, function() {
-    closing = true;
+  clientSocket.send(new Buffer(goodbyeHeader), HEADER_SIZE, 0, serverPort,
+    serverHost, function() {
+      closing = true;
   });
 }
