@@ -3,13 +3,14 @@ import socket
 import threading
 
 def main():
-  serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   host = socket.gethostname()
   port = int(sys.argv[1])
   serverSocket.bind((host, port))
+  print "Server bound to %s" % (host, port)
   print "Listening on port %s" % sys.argv[1]
 
-  s.listen(5)
+  serverSocket.listen(5)
 
   while True:
     try:
