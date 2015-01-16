@@ -17,9 +17,6 @@ var alivesReceived = 0;
 var sessionId = Math.floor((Math.random() * 2147483647)).toString(2);
 
 var clientSocket = datagram.createSocket('udp4');
-clientSocket.bind(serverPort, function() {
-  clientSocket.addMembership(serverHost);
-})
 
 ///////////////////////////////////////
 // Process command line arguments
