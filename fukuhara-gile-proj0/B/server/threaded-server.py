@@ -16,13 +16,13 @@ def main():
     try:
       data, addr = serverSocket.recvfrom(1024)
       print 'Incoming connection from ', addr
-        if not data:
-          # Do something
-          break
-        else:
-          print "Received data: %s" % data
-          thread = threading.Thread(target=handleMessage, args=(data,))
-          thread.start()
+      if not data:
+        # Do something
+        break
+      else:
+        print "Received data: %s" % data
+        thread = threading.Thread(target=handleMessage, args=(data,))
+        thread.start()
     except KeyboardInterrupt:
       print "\nInterrupted! Server shutting down."
       # send goodbye message to clients
