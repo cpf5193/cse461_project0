@@ -7,7 +7,7 @@ def main():
   host = socket.gethostname()
   port = int(sys.argv[1])
   serverSocket.bind((host, port))
-  print "Server bound to %s" % (host, port)
+  print "Server bound to %s, %s" % (host, port)
   print "Listening on port %s" % sys.argv[1]
 
   serverSocket.listen(5)
