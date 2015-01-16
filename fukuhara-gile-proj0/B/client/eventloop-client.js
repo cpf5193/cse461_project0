@@ -15,7 +15,8 @@ var HEADER_SIZE = 12;
 var sequenceNum = 0;
 var alivesReceived = 0;
 var sessionId = Math.floor((Math.random() * 2147483647)).toString(2);
-
+var paddingLength = 32 - sessionId.length;
+for(var i=0; i<paddingLength; ++i) { sessionId = "0" + sessionId; }
 var clientSocket = datagram.createSocket('udp4');
 
 ///////////////////////////////////////
@@ -32,6 +33,7 @@ var serverPort = process.argv[3];
 // Send initial HELLO to server
 //////////////////////////////////
 var buf = new Buffer(makeHeaderString(0));
+console.log("headerString: " + makeHeaderString(0));
 console.log("sending to " + serverHost + ", " + serverPort);
 clientSocket.send(buf, HEADER_SIZE, 0, serverPort, serverHost, function() {
   // Timeout if no response within TIMEOUT_DURATION milliseconds
@@ -39,7 +41,7 @@ clientSocket.send(buf, HEADER_SIZE, 0, serverPort, serverHost, function() {
     console.log("No HELLO response from " + serverHost);
     if (closing) { process.exit(0); }
     timer = null;
-
+    
     sendGoodbye();
     
   }, TIMEOUT_DURATION);
@@ -153,9 +155,15 @@ function makeHeaderString(requestType) {
     command = "00000011";
   }
   var binarySequence = sequenceNum.toString(2);
-   for(var i=0; i<(32-binarySequence.length); ++i){
+  console.log("initial binary sequence: " + binarySequence);
+  console.log("i upper limit: " + (32 - binarySequence.length));
+  var lengthLeft = 32 - binarySequence.length;
+  for(var i=0; i<lengthLeft; ++i){
     binarySequence = "0" + binarySequence;
   }
+  console.log("binarySequence: " + binarySequence);
+  console.log("sessionId: " + sessionId);
+  console.log("sessionId length: " + sessionId.length);
   return magic + version + command + binarySequence + sessionId;
 }
 
