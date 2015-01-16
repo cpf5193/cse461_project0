@@ -3,7 +3,7 @@ import socket
 import threading
 
 def main():
-  serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   host = socket.gethostname()
   port = int(sys.argv[1])
   serverSocket.bind((host, port))
@@ -14,12 +14,10 @@ def main():
 
   while True:
     try:
-      conn, addr = serverSocket.accept()
+      data, addr = serverSocket.recvfrom(1024)
       print 'Incoming connection from ', addr
-      while True:
-        data = conn.recv(1024)
         if not data:
-          conn.close()
+          # Do something
           break
         else:
           print "Received data: %s" % data
