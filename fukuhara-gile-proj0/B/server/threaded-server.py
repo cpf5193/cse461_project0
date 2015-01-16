@@ -3,21 +3,21 @@ import socket
 import threading
 
 def main():
-  serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   host = socket.gethostname()
   port = int(sys.argv[1])
   serverSocket.bind((host, port))
   print "Server bound to %s, %s" % (host, port)
   print "Listening on port %s" % sys.argv[1]
 
-  serverSocket.listen(5)
+  #serverSocket.listen(5)
 
   while True:
     try:
       conn, addr = serverSocket.accept()
       print 'Incoming connection from ', addr
       while True:
-        data = conn.recv(1024)
+        data, address = conn.recvfrom(1024)
         if not data:
           conn.close()
           break
