@@ -17,6 +17,9 @@ var alivesReceived = 0;
 var sessionId = Math.floor((Math.random() * 2147483647)).toString(2);
 
 var clientSocket = datagram.createSocket('udp4');
+clientSocket.bind(serverPort, function() {
+  clientSocket.addMembership(serverHost);
+})
 
 ///////////////////////////////////////
 // Process command line arguments
@@ -32,6 +35,7 @@ var serverPort = process.argv[3];
 // Send initial HELLO to server
 //////////////////////////////////
 var buf = new Buffer(makeHeaderString(0));
+console.log("sending to " + serverHost + ", " + serverPort);
 clientSocket.send(buf, HEADER_SIZE, 0, serverPort, serverHost, function() {
   // Timeout if no response within TIMEOUT_DURATION milliseconds
   timer = setTimeout(function() {

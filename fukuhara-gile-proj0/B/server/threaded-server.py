@@ -3,7 +3,7 @@ import socket
 import threading
 
 def main():
-  serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+  serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   host = socket.gethostname()
   port = int(sys.argv[1])
   serverSocket.bind((host, port))
