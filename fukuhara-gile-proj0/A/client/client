@@ -1,0 +1,3 @@
+#!/bin/bash
+
+python threaded-client.py $1 $2
