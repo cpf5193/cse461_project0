@@ -42,7 +42,7 @@ def delegateMessage(data):
 
   if (command == 0):
     handleHello();
-  else if (command == 1):
+  elif (command == 1):
     handleGoodbye();
   else:
     handleData(message);
