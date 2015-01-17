@@ -20,7 +20,7 @@ def main():
         break
       else:
         print "Received data: %s" % data
-        thread = threading.Thread(target=handleMessage, args=(data,))
+        thread = threading.Thread(target=delegateMessage, args=(data,))
         thread.start()
     except KeyboardInterrupt:
       print "\nInterrupted! Server shutting down."
@@ -30,8 +30,30 @@ def main():
       print "Socket error: %s" % msg
       break
 
-def handleMessage(data):
-  print "Handling message"
+def delegateMessage(data):
+  magic = int(data[0:16], 2);
+  version = int(data[16:24], 2);
+  command = int(data[24:32], 2);
+  sequenceNumber = int(data[32:64], 2);
+  sessionId = int(data[64:96], 2);
+  message = data[96:];
+
+  #check duplicate, lost packet, etc.
+
+  if (command == 0):
+    handleHello();
+  else if (command == 1):
+    handleGoodbye();
+  else:
+    handleData(message);
+
+def handleHello():
+  print "Received hello message"
+
+def handleGoodbye():
+  print "Received goodbye message"
+
+def handleData():
+  print "Received data message"
 
 main()
-
