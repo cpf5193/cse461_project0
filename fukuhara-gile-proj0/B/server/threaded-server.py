@@ -10,13 +10,12 @@ def main():
   print "Server bound to %s, %s" % (host, port)
   print "Listening on port %s" % sys.argv[1]
 
-  serverSocket.listen(5)
-
   while True:
     try:
       data, addr = serverSocket.recvfrom(1024)
       print 'Incoming connection from ', addr
       if not data:
+        print "No data"
         # Do something
         break
       else:
