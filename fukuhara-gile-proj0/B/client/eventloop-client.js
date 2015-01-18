@@ -11,7 +11,6 @@ var tty = require('tty');
 var timer = null;
 var closing = false;
 var TIMEOUT_DURATION = 5000;
-var HEADER_SIZE = 96;
 var sequenceNum = 0;
 var alivesReceived = 0;
 var sessionId = Math.floor((Math.random() * 2147483647)).toString(2);
