@@ -67,7 +67,7 @@ def handleHello(sessionId):
   helloMsg = createMessage(0, sessionId, None)
   print helloMsg
   serverSocket.sendto(helloMsg, sessions[sessionId][1])
-  timers[sessionId] = threading.Timer(60, killSession)
+  timers[sessionId] = threading.Timer(60, killSession, [sessionId])
   timers[sessionId].start()
 
 def handleGoodbye(sessionId):
