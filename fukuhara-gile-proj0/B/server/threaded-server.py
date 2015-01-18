@@ -3,6 +3,7 @@ import socket
 import threading
 
 sessions = {}
+timers = {}
 serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 def main():
@@ -65,18 +66,18 @@ def delegateMessage(msg, addr):
 def handleHello(sessionId):
   helloMsg = createMessage(0, sessionId, None)
   print helloMsg
-  serverSocket.sendto(helloMsg, sessions[sessionId][2])
-  sessions[sessionId][1] = threading.Timer(60, killSession)
-  sessions[sessionId][1].start()
+  serverSocket.sendto(helloMsg, sessions[sessionId][1])
+  timers[sessionId] = threading.Timer(60, killSession)
+  timers[sessionId].start()
 
 def handleGoodbye(sessionId):
   sendGoodbye(sessionId)
 
 def handleData(sessionId, message):
   aliveMsg = createMessage(2, sessionId, None)
-  serverSocket.sendto(aliveMsg, sessions[sessionId][2])
-  sessions[sessionId][1] = Timer(60, killSession)
-  sessions[sessionId][1].start()
+  serverSocket.sendto(aliveMsg, sessions[sessionId][1])
+  timers[sessionId] = Timer(60, killSession)
+  timers[sessionId].start()
   print "Received data message"
 
 def createMessage(type, sessionId, message):
@@ -109,9 +110,10 @@ def handleUserInput():
 def sendGoodbye(sessionId):
   killSession(sessionId)
   headerString = createMessage(3, sessionId, None)
-  serverSocket.sendto(headerString, sessions[sessionId][2])
+  serverSocket.sendto(headerString, sessions[sessionId][1])
 
 def killSession(sessionId):
   sessions.pop(sessionId)
+  timers.pop(sessionId)
 
 main()
