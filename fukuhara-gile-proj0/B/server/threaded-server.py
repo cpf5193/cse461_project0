@@ -56,7 +56,7 @@ def delegateMessage(msg, addr):
       print "packets out of order"
       sendGoodbye(sessionId)
   if (command == 0):
-    sessions[sessionId] = (sequenceNumber, None, addr)
+    sessions[sessionId] = (sequenceNumber, addr)
     handleHello(sessionId)
   elif (command == 1):
     handleGoodbye(sessionId)
