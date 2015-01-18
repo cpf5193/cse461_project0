@@ -26,6 +26,12 @@ def main():
       else:
         print "Received message: %s" % message
         delegateMessage(message, addr)
+    except KeyboardInterrupt: # move this to the stdin handler
+      print "\nInterrupted! Server shutting down."
+      # send goodbye message to all clients
+      for key in sessions:
+        sendGoodbye(key)
+      sys.exit()
     except socket.error, msg:
       print "Socket error: %s" % msg
       break
