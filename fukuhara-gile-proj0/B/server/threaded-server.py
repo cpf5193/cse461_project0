@@ -19,6 +19,7 @@ def main():
   while True:
     try:
       message, addr = serverSocket.recvfrom(1024)
+      print message
       print 'Incoming connection from ', addr
       if not message:
         print "No message"
@@ -48,6 +49,7 @@ def delegateMessage(msg, addr):
     return
   #Check that this is an appropriate packet for the state of the server/session
   elif (sessionId in sessions):
+    print "session in sessions"
     if (command == 0):
       #If this session has been seen before, but it is another hello, close session
       sendGoodbye(sessionId)
@@ -61,17 +63,20 @@ def delegateMessage(msg, addr):
     elif (sessions[sessionId][0] > sequenceNumber):
       print "packets out of order"
       sendGoodbye(sessionId)
-  if (command == 0):
+  elif (command == 0):
+    print "starting hello"
     sessions[sessionId] = (sequenceNumber, addr)
     handleHello(sessionId)
   elif (command == 1):
     handleGoodbye(sessionId)
   else:
+    print "handling data"
+
     handleData(sessionId, message)
 
 def handleHello(sessionId):
   helloMsg = createMessage(0, sessionId, None)
-  print helloMsg
+  print sessions[sessionId][1]
   serverSocket.sendto(helloMsg, sessions[sessionId][1])
   timers[sessionId] = threading.Timer(60, killSession, [sessionId])
   timers[sessionId].start()
