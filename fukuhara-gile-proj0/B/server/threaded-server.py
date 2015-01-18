@@ -24,12 +24,12 @@ def main():
         break
       else:
         print "Received message: %s" % message
-        delegateMessage(message)
+        delegateMessage(message, addr)
     except socket.error, msg:
       print "Socket error: %s" % msg
       break
 
-def delegateMessage(msg):
+def delegateMessage(msg, addr):
   magic = int(msg[0:16], 2)
   version = int(msg[16:24], 2)
   command = int(msg[24:32], 2)
@@ -37,12 +37,10 @@ def delegateMessage(msg):
   sessionId = int(msg[64:96], 2)
   if (command == 1):
     message = msg[96:]
-
-  if (magic != 50273 || version != 1):
+  if (magic != 50273 or version != 1):
     return
-
   #Check that this is an appropriate packet for the state of the server/session
-  elif (sessions[sessionId] != null):
+  elif (sessionId in sessions):
     if (command == 0):
       #If this session has been seen before, but it is another hello, close session
       sendGoodbye(sessionId)
@@ -54,36 +52,38 @@ def delegateMessage(msg):
       print "Duplicate packet"
       return
     elif (sessions[sessionId][0] > sequenceNumber):
-
+      print "packets out of order"
+      sendGoodbye(sessionId)
   if (command == 0):
-    handleHello(sessionId);
+    sessions[sessionId] = (sequenceNumber, None, addr)
+    handleHello(sessionId)
   elif (command == 1):
-    handleGoodbye(sessionId);
+    handleGoodbye(sessionId)
   else:
-    handleData(sessionId, message);
+    handleData(sessionId, message)
 
 def handleHello(sessionId):
-  helloMsg = createMessage(0, sessionId, null)
+  helloMsg = createMessage(0, sessionId, None)
   print helloMsg
   serverSocket.sendto(helloMsg, sessions[sessionId][2])
-  sessions[sessionId][1] = Timer(60, killSession)
+  sessions[sessionId][1] = threading.Timer(60, killSession)
   sessions[sessionId][1].start()
 
 def handleGoodbye(sessionId):
   sendGoodbye(sessionId)
 
 def handleData(sessionId, message):
-  aliveMsg = createMessage(2, sessionId, null)
+  aliveMsg = createMessage(2, sessionId, None)
   serverSocket.sendto(aliveMsg, sessions[sessionId][2])
   sessions[sessionId][1] = Timer(60, killSession)
   sessions[sessionId][1].start()
   print "Received data message"
 
 def createMessage(type, sessionId, message):
-  magic = str(int(50273, 2))
+  magic = bin(50273)
   version = str(1).zfill(8)
   command = str(type).zfill(8)
-  sequenceNumber = str(sequenceNum).zfill(32)
+  sequenceNumber = str(sessions[sessionId][0]).zfill(32)
   sid = str(sessionId)
   msg = ''
   if (message):
@@ -93,7 +93,7 @@ def createMessage(type, sessionId, message):
 def handleUserInput():
   # Look for 'q' lines and handle keyboard interrupt
   while True:
-    try # read from stdin line by line, looking for 'q'
+    try: # read from stdin line by line, looking for 'q'
       for line in sys.stdin:
         if line == "q":
           for key in sessions:
@@ -108,7 +108,7 @@ def handleUserInput():
 
 def sendGoodbye(sessionId):
   killSession(sessionId)
-  headerString = createMessage(3, sessionId, null)
+  headerString = createMessage(3, sessionId, None)
   serverSocket.sendto(headerString, sessions[sessionId][2])
 
 def killSession(sessionId):
