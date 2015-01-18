@@ -11,7 +11,6 @@ var tty = require('tty');
 var timer = null;
 var closing = false;
 var TIMEOUT_DURATION = 5000;
-var HEADER_SIZE = 96;
 var sequenceNum = 0;
 var alivesReceived = 0;
 var sessionId = Math.floor((Math.random() * 2147483647)).toString(2);
@@ -53,7 +52,7 @@ clientSocket.send(buf, 0, HEADER_SIZE, serverPort, serverHost, function() {
 clientSocket.on('message', function(message) {
   msg = JSON.stringify(message);
   // If hello, cancel timer and transition to ready
-  var msgType = message.substring(25, 33);
+  var msgType = msg.substring(25, 33);
   var command = parseInt(msgType, 2);
 
   if (type == 0) {
