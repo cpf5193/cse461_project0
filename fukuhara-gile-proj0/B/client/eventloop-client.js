@@ -51,8 +51,9 @@ clientSocket.send(buf, HEADER_SIZE, 0, serverPort, serverHost, function() {
 // Handle messages from the server
 //////////////////////////////////
 clientSocket.on('message', function(message) {
+  msg = JSON.stringify(message);
   // If hello, cancel timer and transition to ready
-  var msgType = message.substring(25, 33);
+  var msgType = msg.substring(25, 33);
   var command = parseInt(msgType, 2);
 
   if (type == 0) {
