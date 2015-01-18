@@ -53,13 +53,13 @@ clientSocket.send(buf, 0, HEADER_SIZE, serverPort, serverHost, function() {
 clientSocket.on('message', function(message) {
   msg = JSON.stringify(message);
   // If hello, cancel timer and transition to ready
-  var msgType = message.substring(25, 33);
+  var msgType = msg.substring(25, 33);
   var command = parseInt(msgType, 2);
 
-  if (type == 0) {
+  if (command == 0) {
     // HELLO, cancel timer and transition to ready
     timer = null;
-  } else if (type == 2) {
+  } else if (command == 2) {
     // ALIVE, cancel timer if it is in ready state with timer set
     if (timer != null && !closing) {
       timer = null;
