@@ -11,7 +11,7 @@ var tty = require('tty');
 var timer = null;
 var closing = false;
 var TIMEOUT_DURATION = 5000;
-var HEADER_SIZE = 12;
+var HEADER_SIZE = 96;
 var sequenceNum = 0;
 var alivesReceived = 0;
 var sessionId = Math.floor((Math.random() * 2147483647)).toString(2);
@@ -35,7 +35,7 @@ var serverPort = process.argv[3];
 var buf = new Buffer(makeHeaderString(0));
 console.log("headerString: " + makeHeaderString(0));
 console.log("sending to " + serverHost + ", " + serverPort);
-clientSocket.send(buf, HEADER_SIZE, 0, serverPort, serverHost, function() {
+clientSocket.send(buf, 0, HEADER_SIZE, serverPort, serverHost, function() {
   // Timeout if no response within TIMEOUT_DURATION milliseconds
   timer = setTimeout(function() {
     console.log("No HELLO response from " + serverHost);
@@ -53,7 +53,7 @@ clientSocket.send(buf, HEADER_SIZE, 0, serverPort, serverHost, function() {
 clientSocket.on('message', function(message) {
   msg = JSON.stringify(message);
   // If hello, cancel timer and transition to ready
-  var msgType = msg.substring(25, 33);
+  var msgType = message.substring(25, 33);
   var command = parseInt(msgType, 2);
 
   if (type == 0) {
