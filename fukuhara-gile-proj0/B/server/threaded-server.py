@@ -2,76 +2,81 @@ import sys
 import socket
 import threading
 
-sequenceNum = 0
-host = null
-port = null
-serverSocket = null
-timer = null
+sessions = {}
+serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 def main():
-  serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   host = socket.gethostname()
   port = int(sys.argv[1])
   serverSocket.bind((host, port))
   print "Server bound to %s, %s" % (host, port)
   print "Listening on port %s" % sys.argv[1]
 
+  #Spawn a thread to deal with stdin input
+  thread = threading.Thread(target=handleUserInput, args=())
+
   while True:
     try:
-      data, addr = serverSocket.recvfrom(1024)
+      message, addr = serverSocket.recvfrom(1024)
       print 'Incoming connection from ', addr
-      if not data:
-        print "No data"
+      if not message:
+        print "No message"
         break
       else:
-        print "Received data: %s" % data
-        thread = threading.Thread(target=delegateMessage, args=(data,))
-        thread.start()
-    except KeyboardInterrupt:
-      print "\nInterrupted! Server shutting down."
-      # send goodbye message to clients
-      return;
+        print "Received message: %s" % message
+        delegateMessage(message)
     except socket.error, msg:
       print "Socket error: %s" % msg
       break
 
-def delegateMessage(data):
-  magic = int(data[0:16], 2)
-  version = int(data[16:24], 2)
-  command = int(data[24:32], 2)
-  sequenceNumber = int(data[32:64], 2)
-  sessionId = int(data[64:96], 2)
+def delegateMessage(msg):
+  magic = int(msg[0:16], 2)
+  version = int(msg[16:24], 2)
+  command = int(msg[24:32], 2)
+  sequenceNumber = int(msg[32:64], 2)
+  sessionId = int(msg[64:96], 2)
   if (command == 1):
-    message = data[96:]
+    message = msg[96:]
 
-  #check duplicate, lost packet, etc.
+  if (magic != 50273 || version != 1):
+    return
 
-  if (magic != 50273 || version != 1) {
-    #silently discard the connection
-  }
+  #Check that this is an appropriate packet for the state of the server/session
+  elif (sessions[sessionId] != null):
+    if (command == 0):
+      #If this session has been seen before, but it is another hello, close session
+      sendGoodbye(sessionId)
+    elif (sessions[sessionId][0] + 1 < sequenceNumber):
+      numlost = sequenceNumber - sessions[sessionId[0]] - 1
+      for x in range(0, numlost):
+        print "Lost Packet"
+    elif (sessions[sessionId][0] == sequenceNumber):
+      print "Duplicate packet"
+      return
+    elif (sessions[sessionId][0] > sequenceNumber):
 
   if (command == 0):
-    handleHello(command, sessionId);
+    handleHello(sessionId);
   elif (command == 1):
-    handleGoodbye(command, sessionId);
+    handleGoodbye(sessionId);
   else:
-    handleData(command, sessionId, message);
+    handleData(sessionId, message);
 
-def handleHello(command, sessionId):
-  helloMsg = createMessage(command, sessionId, null)
+def handleHello(sessionId):
+  helloMsg = createMessage(0, sessionId, null)
   print helloMsg
-  serverSocket.sendto(helloMsg, (host, port))
-  #set timer
+  serverSocket.sendto(helloMsg, sessions[sessionId][2])
+  sessions[sessionId][1] = Timer(60, killSession)
+  sessions[sessionId][1].start()
 
-def handleGoodbye(command, sessionId):
-  #send goodbye
-  #shut down
-  print "Received goodbye message"
+def handleGoodbye(sessionId):
+  sendGoodbye(sessionId)
 
-def handleData():
-  #send alive message
-  #reset timer
-  #timeout for each connection? Or just one timeout and implicitly a timer will be created
+def handleData(sessionId, message):
+  aliveMsg = createMessage(2, sessionId, null)
+  serverSocket.sendto(aliveMsg, sessions[sessionId][2])
+  sessions[sessionId][1] = Timer(60, killSession)
+  sessions[sessionId][1].start()
   print "Received data message"
 
 def createMessage(type, sessionId, message):
@@ -84,5 +89,29 @@ def createMessage(type, sessionId, message):
   if (message):
     msg = message
   return magic + version + command + sequenceNumber + sid + msg
+
+def handleUserInput():
+  # Look for 'q' lines and handle keyboard interrupt
+  while True:
+    try # read from stdin line by line, looking for 'q'
+      for line in sys.stdin:
+        if line == "q":
+          for key in sessions:
+            sendGoodbye(key)
+          sys.exit()
+    except KeyboardInterrupt: # move this to the stdin handler
+      print "\nInterrupted! Server shutting down."
+      # send goodbye message to all clients
+      for key in sessions:
+        sendGoodbye(key)
+      sys.exit()
+
+def sendGoodbye(sessionId):
+  killSession(sessionId)
+  headerString = createMessage(3, sessionId, null)
+  serverSocket.sendto(headerString, sessions[sessionId][2])
+
+def killSession(sessionId):
+  sessions.pop(sessionId)
 
 main()
