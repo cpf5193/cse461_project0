@@ -52,10 +52,12 @@ clientSocket.send(buf, 0, HEADER_SIZE, serverPort, serverHost, function() {
 //////////////////////////////////
 clientSocket.on('message', function(message) {
   msg = JSON.stringify(message);
+  console.log("msg: " + msg);
   // If hello, cancel timer and transition to ready
   var msgType = msg.substring(25, 33);
   var command = parseInt(msgType, 2);
-
+  console.log("msgType: " + msgType);
+  console.log("command: " + command);  
   if (command == 0) {
     // HELLO, cancel timer and transition to ready
     timer = null;
