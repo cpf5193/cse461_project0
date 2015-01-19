@@ -49,12 +49,13 @@ def delegateMessage(msg, addr):
     return
   #Check that this is an appropriate packet for the state of the server/session
   elif (sessionId in sessions):
-    print "session in sessions"
     if (command == 0):
       #If this session has been seen before, but it is another hello, close session
       sendGoodbye(sessionId)
     elif (sessions[sessionId][0] + 1 < sequenceNumber):
-      numlost = sequenceNumber - sessions[sessionId[0]] - 1
+      print "sessions[sessionId][0]: " + str(sessions[sessionId][0])
+      print "sequenceNumber: " + str(sequenceNumber)
+      numlost = sequenceNumber - sessions[sessionId][0] - 1
       for x in range(0, numlost):
         print "Lost Packet"
     elif (sessions[sessionId][0] == sequenceNumber):
@@ -63,6 +64,13 @@ def delegateMessage(msg, addr):
     elif (sessions[sessionId][0] > sequenceNumber):
       print "packets out of order"
       sendGoodbye(sessionId)
+    else:
+      print "handling data"
+      sequenceNumber += 1
+      sessions[sessionId] = (sequenceNumber, addr)
+      clearTimeout(timers[sessionId])
+      timers[sessionId] = threading.Timer(60, killSession, [sessionId])
+      handleData(sessionId, message)
   elif (command == 0):
     print "starting hello"
     sessions[sessionId] = (sequenceNumber, addr)
@@ -71,12 +79,12 @@ def delegateMessage(msg, addr):
     handleGoodbye(sessionId)
   else:
     print "handling data"
-
     handleData(sessionId, message)
 
 def handleHello(sessionId):
   helloMsg = createMessage(0, sessionId, None)
-  print sessions[sessionId][1]
+  print "helloMsg: "
+  print helloMsg
   serverSocket.sendto(helloMsg, sessions[sessionId][1])
   timers[sessionId] = threading.Timer(60, killSession, [sessionId])
   timers[sessionId].start()
@@ -87,16 +95,19 @@ def handleGoodbye(sessionId):
 def handleData(sessionId, message):
   aliveMsg = createMessage(2, sessionId, None)
   serverSocket.sendto(aliveMsg, sessions[sessionId][1])
-  timers[sessionId] = Timer(60, killSession)
+  timers[sessionId] = threading.Timer(60, killSession, [sessionId])
   timers[sessionId].start()
-  print "Received data message"
+  print "Received data message: " + message
 
 def createMessage(type, sessionId, message):
-  magic = bin(50273)
+  magic = bin(50273)[2:]
   version = str(1).zfill(8)
   command = str(type).zfill(8)
-  sequenceNumber = str(sessions[sessionId][0]).zfill(32)
-  sid = str(sessionId)
+  if sessionId in sessions:
+    sequenceNumber = str(sessions[sessionId][0]).zfill(32)
+  else:
+    sequenceNumber = "0".zfill(32)
+  sid = bin(sessionId)[2:]
   msg = ''
   if (message):
     msg = message
@@ -124,7 +135,9 @@ def sendGoodbye(sessionId):
   serverSocket.sendto(headerString, sessions[sessionId][1])
 
 def killSession(sessionId):
-  sessions.pop(sessionId)
-  timers.pop(sessionId)
+  if sessionId in sessions:
+    sessions.pop(sessionId)
+  if sessionId in timers:
+    timers.pop(sessionId)
 
 main()
