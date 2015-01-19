@@ -19,13 +19,11 @@ def main():
   while True:
     try:
       message, addr = serverSocket.recvfrom(1024)
-      print message
       print 'Incoming connection from ', addr
       if not message:
         print "No message"
         break
       else:
-        print "Received message: %s" % message
         delegateMessage(message, addr)
     except KeyboardInterrupt: # move this to the stdin handler
       print "\nInterrupted! Server shutting down."
@@ -53,22 +51,23 @@ def delegateMessage(msg, addr):
       #If this session has been seen before, but it is another hello, close session
       sendGoodbye(sessionId)
     elif (sessions[sessionId][0] + 1 < sequenceNumber):
-      print "sessions[sessionId][0]: " + str(sessions[sessionId][0])
-      print "sequenceNumber: " + str(sequenceNumber)
       numlost = sequenceNumber - sessions[sessionId][0] - 1
       for x in range(0, numlost):
         print "Lost Packet"
     elif (sessions[sessionId][0] == sequenceNumber):
+      print "sessions[sessionId][0]: " + str(sessions[sessionId][0])
+      print "sequenceNumber: " + str(sequenceNumber)
       print "Duplicate packet"
       return
     elif (sessions[sessionId][0] > sequenceNumber):
       print "packets out of order"
       sendGoodbye(sessionId)
     else:
+      print "sessions[sessionId][0]: " + str(sessions[sessionId][0])
+      print "sequenceNumber: " + str(sequenceNumber)
       print "handling data"
-      sequenceNumber += 1
       sessions[sessionId] = (sequenceNumber, addr)
-      clearTimeout(timers[sessionId])
+      timers[sessionId].cancel()
       timers[sessionId] = threading.Timer(60, killSession, [sessionId])
       handleData(sessionId, message)
   elif (command == 0):
@@ -83,8 +82,6 @@ def delegateMessage(msg, addr):
 
 def handleHello(sessionId):
   helloMsg = createMessage(0, sessionId, None)
-  print "helloMsg: "
-  print helloMsg
   serverSocket.sendto(helloMsg, sessions[sessionId][1])
   timers[sessionId] = threading.Timer(60, killSession, [sessionId])
   timers[sessionId].start()
@@ -138,6 +135,7 @@ def killSession(sessionId):
   if sessionId in sessions:
     sessions.pop(sessionId)
   if sessionId in timers:
+    timers[sessionId].cancel()
     timers.pop(sessionId)
 
 main()
