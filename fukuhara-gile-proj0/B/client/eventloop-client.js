@@ -51,11 +51,12 @@ sequenceNum++;
 // Handle messages from the server
 //////////////////////////////////
 clientSocket.on('message', function(message) {
+  console.log("message received from server");
   var msg = message.toString();
   console.log("message: " + msg);
   // If hello, cancel timer and transition to ready
-  var msgType = msg.substring(25, 33);
-  var command = parseInt(msgType, 2);
+  var msgType = msg.substring(24, 32);
+  var command = parseInt(msgType);
   console.log("msgType: " + msgType);
   console.log("command: " + command);  
   if (command == 0) {
@@ -63,6 +64,7 @@ clientSocket.on('message', function(message) {
     clearTimeout(timer);
     timer = null;
   } else if (command == 2) {
+    console.log("received ALIVE");
     // ALIVE, cancel timer if it is in ready state with timer set
     if (timer != null && !closing) {
       clearTimeout(timer);
@@ -162,8 +164,6 @@ function makeHeaderString(requestType) {
     command = "00000011";
   }
   var binarySequence = sequenceNum.toString(2);
-  console.log("initial binary sequence: " + binarySequence);
-  console.log("i upper limit: " + (32 - binarySequence.length));
   var lengthLeft = 32 - binarySequence.length;
   for(var i=0; i<lengthLeft; ++i){
     binarySequence = "0" + binarySequence;
@@ -180,7 +180,7 @@ function makeHeaderString(requestType) {
 function sendGoodbye() {
   // send a GOODBYE to the server
   var goodbyeHeader = makeHeaderString(3);
-  clientSocket.send(new Buffer(goodbyeHeader), HEADER_SIZE, 0, serverPort,
+  clientSocket.send(new Buffer(goodbyeHeader), 0, HEADER_SIZE, serverPort,
     serverHost, function() {
       closing = true;
       setTimeout(function() {

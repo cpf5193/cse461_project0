@@ -36,6 +36,7 @@ def main():
       break
 
 def delegateMessage(msg, addr):
+  print "delegating message"
   magic = int(msg[0:16], 2)
   version = int(msg[16:24], 2)
   command = int(msg[24:32], 2)
@@ -44,11 +45,15 @@ def delegateMessage(msg, addr):
   if (command == 1):
     message = msg[96:]
   if (magic != 50273 or version != 1):
+    print 'no match'
     return
   #Check that this is an appropriate packet for the state of the server/session
   elif (sessionId in sessions):
-    if (command == 0):
-      #If this session has been seen before, but it is another hello, close session
+    print "session in sessions"
+    if (command == 0 or command == 3):
+      # If this session has been seen before, but it is another hello
+      # or a goodbye message is sent, close session
+      print "sending goodbye"
       sendGoodbye(sessionId)
     elif (sessions[sessionId][0] + 1 < sequenceNumber):
       numlost = sequenceNumber - sessions[sessionId][0] - 1
@@ -76,7 +81,8 @@ def delegateMessage(msg, addr):
     print "starting hello"
     sessions[sessionId] = (sequenceNumber, addr)
     handleHello(sessionId)
-  elif (command == 1):
+  elif (command == 1 or command == 3):
+    print "processing goodbye"
     handleGoodbye(sessionId)
   else:
     print "handling data"
@@ -84,7 +90,8 @@ def delegateMessage(msg, addr):
 
 def handleHello(sessionId):
   helloMsg = createMessage(0, sessionId, None)
-  serverSocket.sendto(helloMsg, sessions[sessionId][1])
+  addrPort = (sessions[sessionId][1][0], sessions[sessionId][1][1])
+  serverSocket.sendto(helloMsg, addrPort)
   timers[sessionId] = threading.Timer(60, killSession, [sessionId])
   timers[sessionId].start()
 
@@ -103,7 +110,7 @@ def createMessage(type, sessionId, message):
   version = str(1).zfill(8)
   command = str(type).zfill(8)
   if sessionId in sessions:
-    sequenceNumber = str(sessions[sessionId][0]).zfill(32)
+    sequenceNumber = bin(sessions[sessionId][0])[2:].zfill(32)
   else:
     sequenceNumber = "0".zfill(32)
   sid = bin(sessionId)[2:]
@@ -129,9 +136,12 @@ def handleUserInput():
       sys.exit()
 
 def sendGoodbye(sessionId):
-  killSession(sessionId)
+  print "in sendGoodbye"
+  savedAddr = sessions[sessionId][1]
   headerString = createMessage(3, sessionId, None)
-  serverSocket.sendto(headerString, sessions[sessionId][1])
+  serverSocket.sendto(headerString, savedAddr)
+  print "Killing session"
+  killSession(sessionId)
 
 def killSession(sessionId):
   if sessionId in sessions:
