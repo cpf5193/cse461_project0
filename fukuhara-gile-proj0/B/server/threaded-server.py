@@ -63,6 +63,8 @@ def delegateMessage(msg, addr):
       print "packets out of order"
       sendGoodbye(sessionId)
     else:
+      #need to handle the case where it says goodbye to an active session
+      #and clean up the logic cases
       print "sessions[sessionId][0]: " + str(sessions[sessionId][0])
       print "sequenceNumber: " + str(sequenceNumber)
       print "handling data"
