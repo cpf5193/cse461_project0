@@ -40,6 +40,7 @@ clientSocket.send(buf, 0, HEADER_SIZE, serverPort, serverHost, function() {
   timer = setTimeout(function() {
     console.log("No HELLO response from " + serverHost);
     if (closing) { process.exit(0); }
+    clearTimeout(timer);
     timer = null;
     
     sendGoodbye();
@@ -51,8 +52,8 @@ clientSocket.send(buf, 0, HEADER_SIZE, serverPort, serverHost, function() {
 // Handle messages from the server
 //////////////////////////////////
 clientSocket.on('message', function(message) {
-  msg = JSON.stringify(message);
-  console.log("msg: " + msg);
+  var msg = message.toString();
+  console.log("message: " + msg);
   // If hello, cancel timer and transition to ready
   var msgType = msg.substring(25, 33);
   var command = parseInt(msgType, 2);
@@ -60,10 +61,12 @@ clientSocket.on('message', function(message) {
   console.log("command: " + command);  
   if (command == 0) {
     // HELLO, cancel timer and transition to ready
+    clearTimeout(timer);
     timer = null;
   } else if (command == 2) {
     // ALIVE, cancel timer if it is in ready state with timer set
     if (timer != null && !closing) {
+      clearTimeout(timer);
       timer = null;
     }
     alivesReceived++;
@@ -110,6 +113,7 @@ reader.on('line', function(line) {
     timer = setTimeout(function() {
       console.log("No response to DATA from server");
       if (closing) { process.exit(0); }
+      clearTimeout(timer);
       timer = null;
   
       sendGoodbye();
