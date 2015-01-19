@@ -33,8 +33,6 @@ var serverPort = process.argv[3];
 // Send initial HELLO to server
 //////////////////////////////////
 var buf = new Buffer(makeHeaderString(0));
-console.log("headerString: " + makeHeaderString(0));
-console.log("sending to " + serverHost + ", " + serverPort);
 clientSocket.send(buf, 0, HEADER_SIZE, serverPort, serverHost, function() {
   // Timeout if no response within TIMEOUT_DURATION milliseconds
   timer = setTimeout(function() {
@@ -47,6 +45,7 @@ clientSocket.send(buf, 0, HEADER_SIZE, serverPort, serverHost, function() {
     
   }, TIMEOUT_DURATION);
 });
+sequenceNum++;
 
 //////////////////////////////////
 // Handle messages from the server
@@ -99,10 +98,11 @@ reader.on('line', function(line) {
     return;
   }
   var data = makeHeaderString(1) + input;
+  console.log(data);
   var message = new Buffer(data);
 
   // Take the user input and send it to the server as DATA
-  clientSocket.send(message, HEADER_SIZE, message.length, serverPort,
+  clientSocket.send(message, 0, message.length, serverPort,
     serverHost, function(err, bytes) {
       sequenceNum++;
       if (err) throw err;
