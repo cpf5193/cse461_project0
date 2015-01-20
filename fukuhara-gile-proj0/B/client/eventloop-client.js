@@ -51,14 +51,10 @@ sequenceNum++;
 // Handle messages from the server
 //////////////////////////////////
 clientSocket.on('message', function(message) {
-  console.log("message received from server");
   var msg = message.toString();
-  console.log("message: " + msg);
   // If hello, cancel timer and transition to ready
   var msgType = msg.substring(24, 32);
-  var command = parseInt(msgType, 2);
-  console.log("msgType: " + msgType);
-  console.log("command: " + command);  
+  var command = parseInt(msgType, 2); 
   if (command == 0) {
     // HELLO, cancel timer and transition to ready
     clearTimeout(timer);
@@ -67,6 +63,7 @@ clientSocket.on('message', function(message) {
     console.log("received ALIVE");
     // ALIVE, cancel timer if it is in ready state with timer set
     if (timer != null && !closing) {
+      console.log("clearing timeout")
       clearTimeout(timer);
       timer = null;
     }
@@ -100,15 +97,15 @@ reader.on('line', function(line) {
     return;
   }
   var data = makeHeaderString(1) + input;
-  console.log(data);
+  //console.log(data);
   var message = new Buffer(data);
 
   // Take the user input and send it to the server as DATA
   clientSocket.send(message, 0, message.length, serverPort,
     serverHost, function(err, bytes) {
-      sequenceNum++;
       if (err) throw err;
   });
+  sequenceNum++;
 
   // If there is not already a timer set, set the timer
   if (timer == null) {
@@ -168,9 +165,9 @@ function makeHeaderString(requestType) {
   for(var i=0; i<lengthLeft; ++i){
     binarySequence = "0" + binarySequence;
   }
-  console.log("binarySequence: " + binarySequence);
-  console.log("sessionId: " + sessionId);
-  console.log("sessionId length: " + sessionId.length);
+  //console.log("binarySequence: " + binarySequence);
+  //console.log("sessionId: " + sessionId);
+  //console.log("sessionId length: " + sessionId.length);
   return magic + version + command + binarySequence + sessionId;
 }
 

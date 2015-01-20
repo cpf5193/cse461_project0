@@ -17,9 +17,9 @@ def main():
 
   while True:
     try:
-      print "listening"
+      #print "listening"
       message, addr = serverSocket.recvfrom(1024)
-      print 'Incoming connection from ', addr
+      #print 'Incoming connection from ', addr
       if not message:
         print "No message"
         break
@@ -34,7 +34,7 @@ def main():
       break
 
 def delegateMessage(msg, addr):
-  print "delegating message"
+  #print "delegating message"
   magic = int(msg[0:16], 2)
   version = int(msg[16:24], 2)
   command = int(msg[24:32], 2)
@@ -47,7 +47,7 @@ def delegateMessage(msg, addr):
     return
   #Check that this is an appropriate packet for the state of the server/session
   elif (sessionId in sessions):
-    print "session in sessions"
+    #print "session in sessions"
     if (command == 0 or command == 3):
       # If this session has been seen before, but it is another hello
       # or a goodbye message is sent, close session
@@ -57,24 +57,29 @@ def delegateMessage(msg, addr):
       numlost = sequenceNumber - sessions[sessionId][0] - 1
       for x in range(0, numlost):
         print "Lost Packet"
+      print "current sequenceNum: " + str(sessions[sessionId][0])
+      print "incoming sequenceNum: " + str(sequenceNumber)
+      sessions[sessionId] = (sequenceNumber, addr)
+      
     elif (sessions[sessionId][0] == sequenceNumber):
-      print "sessions[sessionId][0]: " + str(sessions[sessionId][0])
-      print "sequenceNumber: " + str(sequenceNumber)
       print "Duplicate packet"
       return
     elif (sessions[sessionId][0] > sequenceNumber):
+      print "current sequenceNum: " + str(sessions[sessionId][0])
+      print "incoming sequenceNum: " + str(sequenceNumber)
       print "packets out of order"
       sendGoodbye(sessionId)
     else:
       print "sessions[sessionId][0]: " + str(sessions[sessionId][0])
       print "sequenceNumber: " + str(sequenceNumber)
-      print "handling data"
+     # print "handling data"
       sessions[sessionId] = (sequenceNumber, addr)
       timers[sessionId].cancel()
       timers[sessionId] = threading.Timer(60, killSession, [sessionId])
       handleData(sessionId, message)
   elif (command == 0):
     print "starting hello"
+    print "sequence number: " + str(sequenceNumber)
     sessions[sessionId] = (sequenceNumber, addr)
     handleHello(sessionId)
   elif (command == 1 or command == 3):
@@ -97,7 +102,7 @@ def handleData(sessionId, message):
   serverSocket.sendto(aliveMsg, sessions[sessionId][1])
   timers[sessionId] = threading.Timer(60, killSession, [sessionId])
   timers[sessionId].start()
-  print "Received data message: " + message
+  #print "Received data message: " + message
 
 def createMessage(type, sessionId, message):
   magic = bin(50273)[2:]
@@ -122,8 +127,8 @@ def handleUserInput():
         line += char
       if line == "q\n":
         closeServer()
-      else:
-        print line
+      #else:
+        #print line
     except KeyboardInterrupt: # move this to the stdin handle
       print "\nInterrupted! Server shutting down."
       # send goodbye message to all clients
