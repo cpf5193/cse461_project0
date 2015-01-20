@@ -63,7 +63,7 @@ clientSocket.on('message', function(message) {
     //console.log("received ALIVE");
     // ALIVE, cancel timer if it is in ready state with timer set
     if (timer != null && !closing) {
-      console.log("clearing timeout")
+      //console.log("clearing timeout")
       clearTimeout(timer);
       timer = null;
     }
@@ -75,7 +75,7 @@ clientSocket.on('message', function(message) {
       console.log("Server shut down. Closing connection.");
       process.exit(1);
     } else {
-      console.log("Connection closed.");
+      //console.log("Connection closed.");
       process.exit(0);
     }
   }
@@ -130,19 +130,21 @@ var haveTTY = tty.isatty(process.stdin);
 
 process.stdin.on('end', function() {
   if (haveTTY) {
-    process.exit(0);
+    console.log('eof');
+    sendGoodbye();
   }
-
-  // Try to wait until all outgoing messages have been put on the network
-  // We will wait at most 10 seconds
-  var tries = 0;
-  console.log("closing connection...");
-  while(alivesReceived < sequenceNum && tries < 20) {
-    setTimeout(function() {}, 500);
-    tries++;
+  else {
+    // Try to wait until all outgoing messages have been put on the network
+    // We will wait at most 10 seconds
+    var tries = 0;
+    //console.log("closing connection...");
+    while(alivesReceived < sequenceNum && tries < 20) {
+      setTimeout(function() {}, 500);
+      tries++;
+    }
+    console.log("eof");
+    sendGoodbye();
   }
-  console.log("eof");
-  sendGoodbye();
 });
 
 //////////////////////////////////////////
