@@ -66,8 +66,6 @@ def delegateMessage(msg, addr):
       print "packets out of order"
       sendGoodbye(sessionId)
     else:
-      #need to handle the case where it says goodbye to an active session
-      #and clean up the logic cases
       print "sessions[sessionId][0]: " + str(sessions[sessionId][0])
       print "sequenceNumber: " + str(sequenceNumber)
       print "handling data"
@@ -80,6 +78,7 @@ def delegateMessage(msg, addr):
     sessions[sessionId] = (sequenceNumber, addr)
     handleHello(sessionId)
   elif (command == 1 or command == 3):
+    # If 1, it is a DATA message sent before a HELLO
     print "processing goodbye"
     sendGoodbye(sessionId)
   else:
@@ -103,7 +102,7 @@ def handleData(sessionId, message):
 def createMessage(type, sessionId, message):
   magic = bin(50273)[2:]
   version = str(1).zfill(8)
-  command = str(type).zfill(8)
+  command = bin(type)[2:].zfill(8)
   if sessionId in sessions:
     sequenceNumber = bin(sessions[sessionId][0])[2:].zfill(32)
   else:

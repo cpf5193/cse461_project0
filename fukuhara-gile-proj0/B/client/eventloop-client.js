@@ -56,7 +56,7 @@ clientSocket.on('message', function(message) {
   console.log("message: " + msg);
   // If hello, cancel timer and transition to ready
   var msgType = msg.substring(24, 32);
-  var command = parseInt(msgType);
+  var command = parseInt(msgType, 2);
   console.log("msgType: " + msgType);
   console.log("command: " + command);  
   if (command == 0) {
