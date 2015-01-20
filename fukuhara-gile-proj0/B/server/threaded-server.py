@@ -1,6 +1,4 @@
-import sys
-import socket
-import threading
+import sys, socket, os, threading
 
 sessions = {}
 timers = {}
@@ -15,9 +13,11 @@ def main():
 
   #Spawn a thread to deal with stdin input
   thread = threading.Thread(target=handleUserInput, args=())
+  thread.start()
 
   while True:
     try:
+      print "listening"
       message, addr = serverSocket.recvfrom(1024)
       print 'Incoming connection from ', addr
       if not message:
@@ -28,9 +28,7 @@ def main():
     except KeyboardInterrupt: # move this to the stdin handler
       print "\nInterrupted! Server shutting down."
       # send goodbye message to all clients
-      for key in sessions:
-        sendGoodbye(key)
-      sys.exit()
+      closeServer()
     except socket.error, msg:
       print "Socket error: %s" % msg
       break
@@ -83,7 +81,7 @@ def delegateMessage(msg, addr):
     handleHello(sessionId)
   elif (command == 1 or command == 3):
     print "processing goodbye"
-    handleGoodbye(sessionId)
+    sendGoodbye(sessionId)
   else:
     print "handling data"
     handleData(sessionId, message)
@@ -94,9 +92,6 @@ def handleHello(sessionId):
   serverSocket.sendto(helloMsg, addrPort)
   timers[sessionId] = threading.Timer(60, killSession, [sessionId])
   timers[sessionId].start()
-
-def handleGoodbye(sessionId):
-  sendGoodbye(sessionId)
 
 def handleData(sessionId, message):
   aliveMsg = createMessage(2, sessionId, None)
@@ -123,17 +118,17 @@ def handleUserInput():
   # Look for 'q' lines and handle keyboard interrupt
   while True:
     try: # read from stdin line by line, looking for 'q'
-      for line in sys.stdin:
-        if line == "q":
-          for key in sessions:
-            sendGoodbye(key)
-          sys.exit()
-    except KeyboardInterrupt: # move this to the stdin handler
+      line = ""
+      for char in sys.stdin.readline():
+        line += char
+      if line == "q\n":
+        closeServer()
+      else:
+        print line
+    except KeyboardInterrupt: # move this to the stdin handle
       print "\nInterrupted! Server shutting down."
       # send goodbye message to all clients
-      for key in sessions:
-        sendGoodbye(key)
-      sys.exit()
+      closeServer()
 
 def sendGoodbye(sessionId):
   print "in sendGoodbye"
@@ -149,5 +144,12 @@ def killSession(sessionId):
   if sessionId in timers:
     timers[sessionId].cancel()
     timers.pop(sessionId)
+
+def closeServer():
+  keys = list(sessions.keys())
+  for key in keys:
+    sendGoodbye(key)
+    killSession(key)
+  os._exit(1)
 
 main()
