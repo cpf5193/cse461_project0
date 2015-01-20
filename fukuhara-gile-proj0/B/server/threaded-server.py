@@ -8,8 +8,7 @@ def main():
   host = socket.gethostname()
   port = int(sys.argv[1])
   serverSocket.bind((host, port))
-  print "Server bound to %s, %s" % (host, port)
-  print "Listening on port %s" % sys.argv[1]
+  print "Waiting on port %s..." % sys.argv[1]
 
   #Spawn a thread to deal with stdin input
   thread = threading.Thread(target=handleUserInput, args=())
@@ -49,57 +48,62 @@ def delegateMessage(msg, addr):
   elif (sessionId in sessions):
     #print "session in sessions"
     if (command == 0 or command == 3):
+      if (command == 3):
+        print "%s [%d] GOODBYE from client." % (decToHex(sessionId), sessions[sessionId][0] + 1)
       # If this session has been seen before, but it is another hello
       # or a goodbye message is sent, close session
-      print "sending goodbye"
+      #print "sending goodbye"
       sendGoodbye(sessionId)
     elif (sessions[sessionId][0] + 1 < sequenceNumber):
-      numlost = sequenceNumber - sessions[sessionId][0] - 1
-      for x in range(0, numlost):
-        print "Lost Packet"
-      print "current sequenceNum: " + str(sessions[sessionId][0])
-      print "incoming sequenceNum: " + str(sequenceNumber)
+      for x in range(sessions[sessionId][0]+1, sequenceNumber):
+        print "%s [%d] Lost Packet!" % (decToHex(sessionId), x)
+      #print "current sequenceNum: " + str(sessions[sessionId][0])
+      #print "incoming sequenceNum: " + str(sequenceNumber)
       sessions[sessionId] = (sequenceNumber, addr)
       
     elif (sessions[sessionId][0] == sequenceNumber):
       print "Duplicate packet"
       return
     elif (sessions[sessionId][0] > sequenceNumber):
-      print "current sequenceNum: " + str(sessions[sessionId][0])
-      print "incoming sequenceNum: " + str(sequenceNumber)
+      #print "current sequenceNum: " + str(sessions[sessionId][0])
+      #print "incoming sequenceNum: " + str(sequenceNumber)
       print "packets out of order"
       sendGoodbye(sessionId)
     else:
-      print "sessions[sessionId][0]: " + str(sessions[sessionId][0])
-      print "sequenceNumber: " + str(sequenceNumber)
+      #print "sessions[sessionId][0]: " + str(sessions[sessionId][0])
+      #print "sequenceNumber: " + str(sequenceNumber)
      # print "handling data"
       sessions[sessionId] = (sequenceNumber, addr)
       timers[sessionId].cancel()
       timers[sessionId] = threading.Timer(60, killSession, [sessionId])
       handleData(sessionId, message)
   elif (command == 0):
-    print "starting hello"
-    print "sequence number: " + str(sequenceNumber)
+    #print "starting hello"
+    #print "sequence number: " + str(sequenceNumber)
     sessions[sessionId] = (sequenceNumber, addr)
     handleHello(sessionId)
   elif (command == 1 or command == 3):
+    if (command == 3):
+      print "%s [%d] GOODBYE from client." % (decToHex(sessionId), sessions[sessionId][0] + 1)
     # If 1, it is a DATA message sent before a HELLO
-    print "processing goodbye"
+    #print "processing goodbye"
     sendGoodbye(sessionId)
   else:
-    print "handling data"
+    #print "handling data"
     handleData(sessionId, message)
 
 def handleHello(sessionId):
   helloMsg = createMessage(0, sessionId, None)
   addrPort = (sessions[sessionId][1][0], sessions[sessionId][1][1])
   serverSocket.sendto(helloMsg, addrPort)
+  print "%s [%d] Session created" % (decToHex(sessionId), sessions[sessionId][0])
   timers[sessionId] = threading.Timer(60, killSession, [sessionId])
   timers[sessionId].start()
 
 def handleData(sessionId, message):
   aliveMsg = createMessage(2, sessionId, None)
   serverSocket.sendto(aliveMsg, sessions[sessionId][1])
+  print "%s [%d] %s" % (decToHex(sessionId), sessions[sessionId][0], message)
   timers[sessionId] = threading.Timer(60, killSession, [sessionId])
   timers[sessionId].start()
   #print "Received data message: " + message
@@ -135,11 +139,13 @@ def handleUserInput():
       closeServer()
 
 def sendGoodbye(sessionId):
-  print "in sendGoodbye"
+  #print "in sendGoodbye"
+  #print "addr: "
+  #print sessions[sessionId][1]
   savedAddr = sessions[sessionId][1]
   headerString = createMessage(3, sessionId, None)
   serverSocket.sendto(headerString, savedAddr)
-  print "Killing session"
+  #print "Killing session"
   killSession(sessionId)
 
 def killSession(sessionId):
@@ -148,12 +154,15 @@ def killSession(sessionId):
   if sessionId in timers:
     timers[sessionId].cancel()
     timers.pop(sessionId)
+  print "%s Session closed" % decToHex(sessionId)
 
 def closeServer():
   keys = list(sessions.keys())
   for key in keys:
     sendGoodbye(key)
-    killSession(key)
   os._exit(1)
+
+def decToHex(decString):
+  return hex(int(decString))
 
 main()

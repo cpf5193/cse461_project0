@@ -10,7 +10,7 @@ var tty = require('tty');
 ///////////////////////////////////////
 var timer = null;
 var closing = false;
-var TIMEOUT_DURATION = 5000;
+var TIMEOUT_DURATION = 10000;
 var sequenceNum = 0;
 var HEADER_SIZE = 96;
 var alivesReceived = 0;
@@ -60,7 +60,7 @@ clientSocket.on('message', function(message) {
     clearTimeout(timer);
     timer = null;
   } else if (command == 2) {
-    console.log("received ALIVE");
+    //console.log("received ALIVE");
     // ALIVE, cancel timer if it is in ready state with timer set
     if (timer != null && !closing) {
       console.log("clearing timeout")
@@ -110,14 +110,15 @@ reader.on('line', function(line) {
   // If there is not already a timer set, set the timer
   if (timer == null) {
     timer = setTimeout(function() {
-      console.log("No response to DATA from server");
-      if (closing) { process.exit(0); }
-      clearTimeout(timer);
-      timer = null;
-  
-      sendGoodbye();
-  
-    }, 5000);
+      if (timer != null) {
+        console.log("No response to DATA from server: " + timer);
+	if (closing) { process.exit(0); }
+	  clearTimeout(timer);
+	  timer = null;
+	  
+	  sendGoodbye();
+      }
+    }, TIMEOUT_DURATION);
   }
 });
 
