@@ -62,7 +62,7 @@ clientSocket.on('message', function(message) {
     timer = null;
   } else if (command == 2) {
     //console.log("received ALIVE");
-    if (goodbyeTimer != null && !closing) {
+    if (goodbyeTimer != null) {
       clearTimeout(goodbyeTimer);
       goodbyeTimer = null;
     }
@@ -136,22 +136,21 @@ var haveTTY = tty.isatty(process.stdin);
 
 process.stdin.on('end', function() {
   console.log('eof');
-  var localAlives = alivesReceived;
-
-  // Set an initial timeout of 500ms to allow any alives to come in
-  setTimeout(function() {
-    // While ALIVEs are still being received, keep waiting to end
-    var interval = setInterval(function() {
-      if (localAlives != alivesReceived) {
-	console.log("waiting to end");
-	localAlives = alivesReceived;
-      } else {
-        clearInterval(interval);
-	sendGoodbye();
-      }
-    }, 500);
-    console.log("done waiting. sending goodbye.");
-    sendGoodbye();
+  var localAlives = 0;
+  // While ALIVEs are still being received, keep waiting to end
+  var interval = setInterval(function() {
+    if (localAlives != alivesReceived) {
+      /*console.log("waiting to end");
+      console.log("localAlives: " + localAlives);
+      console.log("alivesReceived: " + alivesReceived);*/
+      localAlives = alivesReceived;
+    } else {
+      clearInterval(interval);
+      /*console.log("localAlives: " + localAlives);
+      console.log("alivesReceived: " + alivesReceived);
+      console.log("done waiting. sending goodbye.");*/
+      sendGoodbye();
+    }
   }, 500);
 });
 
@@ -196,4 +195,5 @@ function sendGoodbye() {
         process.exit(0);
       }, 5000);
   });
+  closing = true;
 }
