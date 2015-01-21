@@ -9,6 +9,7 @@ var tty = require('tty');
 // Global variables
 ///////////////////////////////////////
 var timer = null;
+var goodbyeTimer = null
 var closing = false;
 var TIMEOUT_DURATION = 10000;
 var sequenceNum = 0;
@@ -61,6 +62,10 @@ clientSocket.on('message', function(message) {
     timer = null;
   } else if (command == 2) {
     //console.log("received ALIVE");
+    if (goodbyeTimer != null && !closing) {
+      clearTimeout(goodbyeTimer);
+      goodbyeTimer = null;
+    }
     // ALIVE, cancel timer if it is in ready state with timer set
     if (timer != null && !closing) {
       //console.log("clearing timeout")
@@ -111,12 +116,13 @@ reader.on('line', function(line) {
   if (timer == null) {
     timer = setTimeout(function() {
       if (timer != null) {
-        console.log("No response to DATA from server: " + timer);
 	if (closing) { process.exit(0); }
-	  clearTimeout(timer);
-	  timer = null;
+        console.log("No response to DATA from server: " + timer);
+	
+	clearTimeout(timer);
+	timer = null;
 	  
-	  sendGoodbye();
+	sendGoodbye();
       }
     }, TIMEOUT_DURATION);
   }
@@ -129,22 +135,24 @@ reader.on('line', function(line) {
 var haveTTY = tty.isatty(process.stdin);
 
 process.stdin.on('end', function() {
-  if (haveTTY) {
-    console.log('eof');
+  console.log('eof');
+  var localAlives = alivesReceived;
+
+  // Set an initial timeout of 500ms to allow any alives to come in
+  setTimeout(function() {
+    // While ALIVEs are still being received, keep waiting to end
+    var interval = setInterval(function() {
+      if (localAlives != alivesReceived) {
+	console.log("waiting to end");
+	localAlives = alivesReceived;
+      } else {
+        clearInterval(interval);
+	sendGoodbye();
+      }
+    }, 500);
+    console.log("done waiting. sending goodbye.");
     sendGoodbye();
-  }
-  else {
-    // Try to wait until all outgoing messages have been put on the network
-    // We will wait at most 10 seconds
-    var tries = 0;
-    //console.log("closing connection...");
-    while(alivesReceived < sequenceNum && tries < 20) {
-      setTimeout(function() {}, 500);
-      tries++;
-    }
-    console.log("eof");
-    sendGoodbye();
-  }
+  }, 500);
 });
 
 //////////////////////////////////////////
@@ -182,8 +190,8 @@ function sendGoodbye() {
   var goodbyeHeader = makeHeaderString(3);
   clientSocket.send(new Buffer(goodbyeHeader), 0, HEADER_SIZE, serverPort,
     serverHost, function() {
-      closing = true;
-      setTimeout(function() {
+      goodbyeTimer = setTimeout(function() {
+	closing = true;
         console.log("No GOODBYE response from server. Closing connection.");
         process.exit(0);
       }, 5000);
