@@ -1,3 +1,0 @@
-#!/bin/bash
-./client localhost 1235 <Dostoyevsky.txt >dual-c1.out 2>&1 &
-./client localhost 1235 <Dostoyevsky.txt >dual-c2.out 2>&1 &
