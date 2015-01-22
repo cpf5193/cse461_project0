@@ -19,7 +19,7 @@ var readline = require('readline');
 var tty = require('tty');
 
 //Header 
-var DEBUG_LEVEL = 0
+var DEBUG_LEVEL = 1
 var MAGIC = 0xC461
 var MAGIC_OFFSET = 0
 var MAGIC_LENGTH = 2
@@ -61,15 +61,22 @@ function debug(msg) {
 process.stdin.on('readable', function() {
 	var input = process.stdin.read();
 	if(input !== null && input.toString().trim() === 'q') {
-		quit(0);
+		endAll(0);
 	}
 });
 
 
 process.stdin.on('end', function() {
-	quit(0);
+	endAll(0);
 });
 
+function endAll(errno) {
+	debug("endall()")
+	for(var i in Object.keys(sessions)) {
+		sendGoodbye(i);
+	}
+	quit(1);
+}
 
 function Message(m) {
 	this.magicNum = m.readUInt16BE(MAGIC_OFFSET);
@@ -111,7 +118,7 @@ port.on('message', function(msg, rinfo) {
 			processGoodbye(message.id, message.seq);
 			break;
 		default:
-			quit(1);
+			endAll(1);
 			break;
 	}
 });
