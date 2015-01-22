@@ -17,10 +17,13 @@ MESSAGE_SIZE = 1024
 MAX_ID = 0xFFFFFFFF
 MIN_ID = 0x00000000
 TIMEOUT = 10.0
+TIMEOUT_CLOSE = 0.5
 
 sequence = 0;
 sessionId = randint(MIN_ID, MAX_ID);
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+closing = False
+tty = sys.stdin.isatty()
 
 def incrementSequence():
 	global sequence
@@ -30,10 +33,15 @@ def endSession():
 	debug("endSession()");
 	sendGoodbye()
 	os._exit(0);
-	
+timer = threading.Timer(TIMEOUT, endSession)
+
+def watAndClose():
+	debug("waitAndClose()")
+
 def restartTimer():
 	global timer
 	debug("restartTimer()");
+	timer.cancel()
 	timer = threading.Timer(TIMEOUT, endSession)
 	timer.start()
 
@@ -75,6 +83,7 @@ def main():
 	stdinThread.start()
 		
 	sendHello()
+	restartTimer()
 		
 	debug("Speaking to %s:%d" % (host, port))
 	debug("Example header: %s" % hexlify(header(1, 2, MAX_ID)));
@@ -83,7 +92,9 @@ def main():
 		while True:
 			msg = receiveMessage();
 			if(msg is ALIVE):
+				debug("Cancelling timer")
 				timer.cancel()
+				debug(timer.isAlive())
 			else:
 				endSession()
 	except KeyboardInterrupt:
@@ -119,15 +130,14 @@ def readStdin():
 		if(not line):
 			debug("Read EOF")
 			endSession()
-		elif(line.strip() is 'q'):
+		elif(line.strip() is 'q' and tty):
 			debug("Read q")
 			endSession()
 		elif(sequence < 1):
 			continue
 		else:
 			debug("Read '" + line.strip() + "'");
-			if(not timer.isAlive()):
-				restartTimer();
+			restartTimer();
 			sendData(line.strip());
 
 if __name__ == "__main__":
