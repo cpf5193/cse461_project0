@@ -1,12 +1,24 @@
+/*
+Chip Fukuhara and Jacob Gile
+Zahorjan
+CSE 461
+Project 0
+
+Simple echo server using non-blocking IO
+*/
+
+//Check for correct arguments
 if (process.argv.length != 3) {
   console.log("Usage: ./server <port> (using script)");
   process.exit(1);
 }
 
+//Import networkign libraries
 var datagram = require('dgram');
 var readline = require('readline');
 var tty = require('tty');
 
+//Header 
 var DEBUG_LEVEL = 0
 var MAGIC = 0xC461
 var MAGIC_OFFSET = 0
