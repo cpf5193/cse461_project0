@@ -187,7 +187,7 @@ function processData(id, seq, payload) {
 function processGoodbye(id, seq) {
 	debug("processGoodbye(" + id + ", " + seq + ")");
 	if(!sessionExists(id)) {
-		debug("Unexpected GOODBYE form " + id);
+		debug("Unexpected GOODBYE from " + id);
 		quit(1);
 	}
 	sendGoodbye(id);

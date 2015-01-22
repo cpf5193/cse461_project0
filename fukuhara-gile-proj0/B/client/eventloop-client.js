@@ -13,12 +13,23 @@ var goodbyeTimer = null
 var closing = false;
 var TIMEOUT_DURATION = 10000;
 var sequenceNum = 0;
-var HEADER_SIZE = 96;
+var HEADER_SIZE = 12;
 var alivesReceived = 0;
-var sessionId = Math.floor((Math.random() * 2147483647)).toString(2);
-var paddingLength = 32 - sessionId.length;
-for(var i=0; i<paddingLength; ++i) { sessionId = "0" + sessionId; }
+var sessionId = Math.floor((Math.random() * 2147483647)).toString(16);
 var clientSocket = datagram.createSocket('udp4');
+
+var MAGIC = 0xC461
+var MAGIC_OFFSET = 0
+var VERSION = 1
+var VERSION_OFFSET = 2
+var HELLO = 0
+var DATA = 1
+var ALIVE = 2
+var GOODBYE = 3
+var COMMAND_OFFSET = 3
+var SEQUENCE_OFFSET = 4
+var SESSION_OFFSET = 8
+var MESSAGE_SIZE = 1024
 
 ///////////////////////////////////////
 // Process command line arguments
@@ -33,7 +44,7 @@ var serverPort = process.argv[3];
 //////////////////////////////////
 // Send initial HELLO to server
 //////////////////////////////////
-var buf = new Buffer(makeHeaderString(0));
+var buf = new Buffer(makeHeaderString(HELLO));
 clientSocket.send(buf, 0, HEADER_SIZE, serverPort, serverHost, function() {
   // Timeout if no response within TIMEOUT_DURATION milliseconds
   timer = setTimeout(function() {
@@ -52,15 +63,11 @@ sequenceNum++;
 // Handle messages from the server
 //////////////////////////////////
 clientSocket.on('message', function(message) {
-  var msg = message.toString();
-  // If hello, cancel timer and transition to ready
-  var msgType = msg.substring(24, 32);
-  var command = parseInt(msgType, 2); 
-  if (command == 0) {
+  if (command == HELLO) {
     // HELLO, cancel timer and transition to ready
     clearTimeout(timer);
     timer = null;
-  } else if (command == 2) {
+  } else if (command == ALIVE) {
     //console.log("received ALIVE");
     if (goodbyeTimer != null) {
       clearTimeout(goodbyeTimer);
@@ -101,7 +108,7 @@ reader.on('line', function(line) {
     sendGoodbye();
     return;
   }
-  var data = makeHeaderString(1) + input;
+  var data = makeHeaderString(DATA) + input;
   //console.log(data);
   var message = new Buffer(data);
 
@@ -158,27 +165,13 @@ process.stdin.on('end', function() {
 // Create a header based on the given type
 ////////////////////////////////////////// 
 function makeHeaderString(requestType) {
-  var magic = (50273).toString(2);
-  var version = "00000001";
-  var command;
-  if (requestType == 0) {
-    command = "00000000";
-  } else if (requestType == 1) {
-    command = "00000001";
-  } else if (requestType == 2) {
-    command = "00000010";
-  } else {
-    command = "00000011";
-  }
-  var binarySequence = sequenceNum.toString(2);
-  var lengthLeft = 32 - binarySequence.length;
-  for(var i=0; i<lengthLeft; ++i){
-    binarySequence = "0" + binarySequence;
-  }
-  //console.log("binarySequence: " + binarySequence);
-  //console.log("sessionId: " + sessionId);
-  //console.log("sessionId length: " + sessionId.length);
-  return magic + version + command + binarySequence + sessionId;
+  var buf = new Buffer(HEADER_SIZE);
+  header.writeUInt16BE(MAGIC, MAGIC_OFFSET);
+  header.writeUInt8(VERSION, VERSION_OFFSET);
+  header.writeUInt8(requestType, COMMAND_OFFSET);
+  header.writeUInt32BE(sequenceNum, SEQUENCE_OFFSET);
+  header.writeUInt32BE(sessionId, SESSION_OFFSET);
+  return buf;
 }
 
 ///////////////////////////////////
@@ -186,14 +179,14 @@ function makeHeaderString(requestType) {
 ///////////////////////////////////
 function sendGoodbye() {
   // send a GOODBYE to the server
-  var goodbyeHeader = makeHeaderString(3);
+  var goodbyeHeader = makeHeaderString(GOODBYE);
   clientSocket.send(new Buffer(goodbyeHeader), 0, HEADER_SIZE, serverPort,
     serverHost, function() {
       goodbyeTimer = setTimeout(function() {
-	closing = true;
+	      closing = true;
         console.log("No GOODBYE response from server. Closing connection.");
         process.exit(0);
-      }, 5000);
+      }, TIMEOUT_DURATION);
   });
   closing = true;
 }
