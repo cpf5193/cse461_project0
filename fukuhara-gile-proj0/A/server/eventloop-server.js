@@ -19,7 +19,7 @@ var readline = require('readline');
 var tty = require('tty');
 
 //Header 
-var DEBUG_LEVEL = 1
+var DEBUG_LEVEL = 0
 var MAGIC = 0xC461
 var MAGIC_OFFSET = 0
 var MAGIC_LENGTH = 2
@@ -236,9 +236,6 @@ function printLostPackets(id, start, end, payload) {
 }
 
 function quit(errno) {
-	for(var id in Object.keys(sessions)) {
-		sendGoodbye(id);
-	}
 	process.exit(errno);
 }
 
@@ -254,6 +251,9 @@ function Header(command, id) {
 
 function sendMessage(command, id) {
 	var head = Header(command, id);
+	if(!sessionExists(id)) {
+		quit(1)
+	}
 	debug("Sending: '" + JSON.stringify(new Message(head)) + "'");
 	port.send(head, 0, HEADER_SIZE, remotes[id].port,
 		remotes[id].address);

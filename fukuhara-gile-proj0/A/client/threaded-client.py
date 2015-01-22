@@ -1,3 +1,10 @@
+# Chip Fukuhara and Jacob Gile
+# Zahorjan
+# CSE 461
+# Project 0
+
+# Simple client using threads
+
 import sys, socket, threading, os
 from struct import pack, unpack
 from collections import namedtuple
@@ -33,10 +40,24 @@ def endSession():
 	debug("endSession()");
 	sendGoodbye()
 	os._exit(0);
-timer = threading.Timer(TIMEOUT, endSession)
 
-def watAndClose():
+def waitAndClose():
 	debug("waitAndClose()")
+	global closing
+	closing = True
+	closeTimer = threading.Timer(TIMEOUT_CLOSE, endSession)
+	closeTimer.start()
+	while True:
+		msg = receiveMessage()
+		if(msg is ALIVE):
+			closeTimer.cancel()
+			closeTimer = threading.Timer(TIMEOUT_CLOSE, endSession)
+			closeTimer.start()
+		if(msg is GOODBYE):
+			endSession()
+
+timer = threading.Timer(TIMEOUT, waitAndClose)
+	
 
 def restartTimer():
 	global timer
@@ -89,7 +110,7 @@ def main():
 	debug("Example header: %s" % hexlify(header(1, 2, MAX_ID)));
 	
 	try:
-		while True:
+		while True and not closing:
 			msg = receiveMessage();
 			if(msg is ALIVE):
 				debug("Cancelling timer")
@@ -99,6 +120,9 @@ def main():
 				endSession()
 	except KeyboardInterrupt:
 		debug("KeyboardInterrupt\n")
+		endSession()
+	except socket.error:
+		debug("Connection refused")
 		endSession()
 		
 		
@@ -129,7 +153,8 @@ def readStdin():
 		line = sys.stdin.readline();
 		if(not line):
 			debug("Read EOF")
-			endSession()
+			print("eof")
+			waitAndClose()
 		elif(line.strip() is 'q' and tty):
 			debug("Read q")
 			endSession()
