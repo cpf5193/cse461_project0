@@ -18,6 +18,7 @@ from binascii import hexlify
 sessions = {}
 timers = {}
 serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+serverSeqNum = 0
 
 ################################
 ## Constants
@@ -119,6 +120,7 @@ def handleHello(sessionId):
   helloMsg = createMessage(HELLO, sessionId, None)
   addrPort = (sessions[sessionId][1][0], sessions[sessionId][1][1])
   serverSocket.sendto(helloMsg, addrPort)
+  serverSeqNum++
   print "%s [%d] Session created" % (hex(sessionId), sessions[sessionId][0])
   timers[sessionId] = threading.Timer(INACTIVITY_DURATION, sendGoodbye, [sessionId])
   timers[sessionId].start()
@@ -132,6 +134,7 @@ def handleHello(sessionId):
 def handleData(sessionId, message):
   aliveMsg = createMessage(ALIVE, sessionId, None)
   serverSocket.sendto(aliveMsg, sessions[sessionId][1])
+  serverSeqNum++
   print "%s [%d] %s" % (hex(sessionId), sessions[sessionId][0], message)
   timers[sessionId] = threading.Timer(INACTIVITY_DURATION, sendGoodbye, [sessionId])
   timers[sessionId].start()
@@ -145,10 +148,7 @@ def handleData(sessionId, message):
 #################################################################
 def createMessage(type, sessionId, message):
   command = type
-  if sessionId in sessions:
-    sequenceNumber = sessions[sessionId][0]
-  else:
-    sequenceNumber = 0
+  sequenceNumber = serverSeqNum
   sid = sessionId
   msg = ''
   if (message):
@@ -179,6 +179,7 @@ def sendGoodbye(sessionId):
   savedAddr = sessions[sessionId][1]
   headerString = createMessage(GOODBYE, sessionId, None)
   serverSocket.sendto(headerString, savedAddr)
+  serverSeqNum++
   if sessionId in sessions:
     killSession(sessionId)
 
