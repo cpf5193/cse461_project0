@@ -18,6 +18,19 @@ var alivesReceived = 0;
 var sessionId = Math.floor((Math.random() * 2147483647)).toString(16);
 var clientSocket = datagram.createSocket('udp4');
 
+var MAGIC = 0xC461
+var MAGIC_OFFSET = 0
+var VERSION = 1
+var VERSION_OFFSET = 2
+var HELLO = 0
+var DATA = 1
+var ALIVE = 2
+var GOODBYE = 3
+var COMMAND_OFFSET = 3
+var SEQUENCE_OFFSET = 4
+var SESSION_OFFSET = 8
+var MESSAGE_SIZE = 1024
+
 ///////////////////////////////////////
 // Process command line arguments
 ///////////////////////////////////////
@@ -31,7 +44,7 @@ var serverPort = process.argv[3];
 //////////////////////////////////
 // Send initial HELLO to server
 //////////////////////////////////
-var buf = new Buffer(makeHeaderString(0));
+var buf = new Buffer(makeHeaderString(HELLO));
 clientSocket.send(buf, 0, HEADER_SIZE, serverPort, serverHost, function() {
   // Timeout if no response within TIMEOUT_DURATION milliseconds
   timer = setTimeout(function() {
@@ -50,11 +63,11 @@ sequenceNum++;
 // Handle messages from the server
 //////////////////////////////////
 clientSocket.on('message', function(message) {
-  if (command == 0) {
+  if (command == HELLO) {
     // HELLO, cancel timer and transition to ready
     clearTimeout(timer);
     timer = null;
-  } else if (command == 2) {
+  } else if (command == ALIVE) {
     //console.log("received ALIVE");
     if (goodbyeTimer != null) {
       clearTimeout(goodbyeTimer);
@@ -95,7 +108,7 @@ reader.on('line', function(line) {
     sendGoodbye();
     return;
   }
-  var data = makeHeaderString(1) + input;
+  var data = makeHeaderString(DATA) + input;
   //console.log(data);
   var message = new Buffer(data);
 
@@ -166,7 +179,7 @@ function makeHeaderString(requestType) {
 ///////////////////////////////////
 function sendGoodbye() {
   // send a GOODBYE to the server
-  var goodbyeHeader = makeHeaderString(3);
+  var goodbyeHeader = makeHeaderString(GOODBYE);
   clientSocket.send(new Buffer(goodbyeHeader), 0, HEADER_SIZE, serverPort,
     serverHost, function() {
       goodbyeTimer = setTimeout(function() {
