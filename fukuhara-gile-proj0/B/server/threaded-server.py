@@ -67,6 +67,8 @@ def main():
 ## addr: A duple (hostname, port) representing the address of the client
 ########################################################################
 def delegateMessage(msg, addr):
+  global sessions, timers
+
   # Get the header elements and the payload out of the message
   (magic, version, command, sequenceNumber, sessionId) = unpack(HEADER_FORMAT, msg[0:HEADER_SIZE])
   if (command == DATA):
@@ -117,10 +119,11 @@ def delegateMessage(msg, addr):
 ## sessionId: the id of the session from which a hello was sent
 ###############################################################
 def handleHello(sessionId):
+  global serverSeqNum, sessions, timers
   helloMsg = createMessage(HELLO, sessionId, None)
   addrPort = (sessions[sessionId][1][0], sessions[sessionId][1][1])
   serverSocket.sendto(helloMsg, addrPort)
-  serverSeqNum++
+  serverSeqNum += 1
   print "%s [%d] Session created" % (hex(sessionId), sessions[sessionId][0])
   timers[sessionId] = threading.Timer(INACTIVITY_DURATION, sendGoodbye, [sessionId])
   timers[sessionId].start()
@@ -132,9 +135,10 @@ def handleHello(sessionId):
 ## message: The message that the client is sending to the server
 ###################################################################
 def handleData(sessionId, message):
+  global serverSeqNum, timers
   aliveMsg = createMessage(ALIVE, sessionId, None)
   serverSocket.sendto(aliveMsg, sessions[sessionId][1])
-  serverSeqNum++
+  serverSeqNum += 1
   print "%s [%d] %s" % (hex(sessionId), sessions[sessionId][0], message)
   timers[sessionId] = threading.Timer(INACTIVITY_DURATION, sendGoodbye, [sessionId])
   timers[sessionId].start()
@@ -148,12 +152,11 @@ def handleData(sessionId, message):
 #################################################################
 def createMessage(type, sessionId, message):
   command = type
-  sequenceNumber = serverSeqNum
   sid = sessionId
   msg = ''
   if (message):
     msg = message
-  return "%s%s" % (pack(HEADER_FORMAT, MAGIC, VERSION, command, sequenceNumber, sid), msg)
+  return "%s%s" % (pack(HEADER_FORMAT, MAGIC, VERSION, command, serverSeqNum, sid), msg)
 
 #########################################################################
 ## Listens to stdin, closing server if the user sends an eof or types 'q'
@@ -176,10 +179,11 @@ def handleUserInput():
 ## sessionId: the id of the session to which a goodbye is to be sent
 ####################################################################
 def sendGoodbye(sessionId):
+  global serverSeqNum
   savedAddr = sessions[sessionId][1]
   headerString = createMessage(GOODBYE, sessionId, None)
   serverSocket.sendto(headerString, savedAddr)
-  serverSeqNum++
+  serverSeqNum += 1
   if sessionId in sessions:
     killSession(sessionId)
 
@@ -188,6 +192,7 @@ def sendGoodbye(sessionId):
 ## sessionId: the id of the session to close
 #################################################################
 def killSession(sessionId):
+  global sessions, timers
   if sessionId in sessions:
     sessions.pop(sessionId)
   if sessionId in timers:
