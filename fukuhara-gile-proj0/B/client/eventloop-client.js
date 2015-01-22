@@ -85,7 +85,7 @@ clientSocket.on('message', function(message) {
     // Goodbye
     if (!closing) {
       // Received a GOODBYE in an unexpected state
-      console.log("Server shut down. Closing connection.");
+      console.log("Server closed session. Closing connection.");
       process.exit(1);
     } else {
       //console.log("Connection closed.");
@@ -147,15 +147,9 @@ process.stdin.on('end', function() {
   // While ALIVEs are still being received, keep waiting to end
   var interval = setInterval(function() {
     if (localAlives != alivesReceived) {
-      /*console.log("waiting to end");
-      console.log("localAlives: " + localAlives);
-      console.log("alivesReceived: " + alivesReceived);*/
       localAlives = alivesReceived;
     } else {
       clearInterval(interval);
-      /*console.log("localAlives: " + localAlives);
-      console.log("alivesReceived: " + alivesReceived);
-      console.log("done waiting. sending goodbye.");*/
       sendGoodbye();
     }
   }, 500);
@@ -166,17 +160,11 @@ process.stdin.on('end', function() {
 ////////////////////////////////////////// 
 function makeHeaderString(requestType, data) {
   var headerSize = (data == null) ? HEADER_SIZE : HEADER_SIZE + data.length;
-  console.log("message size: " + headerSize);
   var buf = new Buffer(headerSize);
-  console.log("magic: " + MAGIC);
   buf.writeUInt16BE(MAGIC, MAGIC_OFFSET);
-  console.log("version: " + VERSION);
   buf.writeUInt8(VERSION, VERSION_OFFSET);
-  console.log("requestType: " + requestType);
   buf.writeUInt8(requestType, COMMAND_OFFSET);
-  console.log("sequenceNum: " + sequenceNum);
   buf.writeUInt32BE(sequenceNum, SEQUENCE_OFFSET);
-  console.log("sessionId: " + sessionId);
   buf.writeUInt32BE(parseInt(sessionId,16), SESSION_OFFSET);
   if (data != null) {
     buf.write(data, HEADER_SIZE); 
