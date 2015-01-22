@@ -7,7 +7,7 @@ var datagram = require('dgram');
 var readline = require('readline');
 var tty = require('tty');
 
-var DEBUG_LEVEL = 1
+var DEBUG_LEVEL = 0
 var MAGIC = 0xC461
 var MAGIC_OFFSET = 0
 var MAGIC_LENGTH = 2
@@ -157,14 +157,16 @@ function processData(id, seq, payload) {
 	}
 	else {
 		var lastSeq = getSessionSeq(id);
-		if (lastSeq < seq - 1) {
+		if (lastSeq > seq - 1) {
+			console.log("Got " + seq + " expected " + (lastSeq + 1));
 			sendGoodbye(id);
 		} else {
 			sendAlive(id);
-			if (lastSeq > seq - 1) {
+			if (lastSeq < seq - 1) {
 				printLostPackets(id, lastSeq, seq, payload);
 			}
 			console.log(linePrefix(id, seq) + payload);
+			sessions[id] = seq;
 		}
 	}
 }
@@ -207,8 +209,10 @@ function linePrefix(id, seq) {
 }
 
 function printLostPackets(id, start, end, payload) {
+	debug("printLostPackets(" + id + ", " + start + 
+		", " + end + ")");
 	for(var i = start; i < end; i++) {
-		Console.log(linePrefix(id, i) + "Lost packet!");
+		console.log(linePrefix(id, i) + "Lost packet!");
 	}
 }
 
