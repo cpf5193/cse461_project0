@@ -6,30 +6,34 @@ var readline = require('readline');
 var tty = require('tty');
 
 ///////////////////////////////////////
-// Global variables
+// Global state
 ///////////////////////////////////////
 var timer = null;
-var goodbyeTimer = null
+var goodbyeTimer = null;
 var closing = false;
-var TIMEOUT_DURATION = 10000;
 var sequenceNum = 0;
-var HEADER_SIZE = 12;
 var alivesReceived = 0;
-var sessionId = Math.floor((Math.random() * 2147483647)).toString(16);
 var clientSocket = datagram.createSocket('udp4');
 
-var MAGIC = 0xC461
-var MAGIC_OFFSET = 0
-var VERSION = 1
-var VERSION_OFFSET = 2
-var HELLO = 0
-var DATA = 1
-var ALIVE = 2
-var GOODBYE = 3
-var COMMAND_OFFSET = 3
-var SEQUENCE_OFFSET = 4
-var SESSION_OFFSET = 8
-var MESSAGE_SIZE = 1024
+///////////////////////////////////////
+// Constants
+///////////////////////////////////////
+var HELLO = 0;
+var DATA = 1;
+var ALIVE = 2;
+var GOODBYE = 3;
+var VERSION = 1;
+var MAGIC = 0xC461;
+var MAGIC_OFFSET = 0;
+var VERSION_OFFSET = 2;
+var COMMAND_OFFSET = 3;
+var SEQUENCE_OFFSET = 4;
+var SESSION_OFFSET = 8;
+var HEADER_SIZE = 12;
+var MESSAGE_SIZE = 1024;
+var TIMEOUT_DURATION = 10000;
+var DELAY_EOF_DURATION = 500;
+var sessionId = Math.floor((Math.random() * 2147483647)).toString(16);
 
 ///////////////////////////////////////
 // Process command line arguments
@@ -69,26 +73,23 @@ clientSocket.on('message', function(message) {
     clearTimeout(timer);
     timer = null;
   } else if (command == ALIVE) {
-    //console.log("received ALIVE");
     if (goodbyeTimer != null) {
       clearTimeout(goodbyeTimer);
       goodbyeTimer = null;
     }
     // ALIVE, cancel timer if it is in ready state with timer set
     if (timer != null && !closing) {
-      //console.log("clearing timeout")
       clearTimeout(timer);
       timer = null;
     }
     alivesReceived++;
   } else {
-    // Goodbye
+    // GOODBYE
     if (!closing) {
       // Received a GOODBYE in an unexpected state
-      console.log("Server closed session. Closing connection.");
+      console.log("Server closed session. Exiting.");
       process.exit(1);
     } else {
-      //console.log("Connection closed.");
       process.exit(0);
     }
   }
@@ -110,26 +111,24 @@ reader.on('line', function(line) {
     return;
   }
   var data = makeHeaderString(DATA, input);
-  //console.log(data);
 
   // Take the user input and send it to the server as DATA
   clientSocket.send(data, 0, data.length, serverPort,
     serverHost, function(err, bytes) {
       if (err) throw err;
-  });
+    }
+  );
   sequenceNum++;
 
   // If there is not already a timer set, set the timer
   if (timer == null) {
     timer = setTimeout(function() {
       if (timer != null) {
-	if (closing) { process.exit(0); }
-        console.log("No response to DATA from server: " + timer);
-	
-	clearTimeout(timer);
-	timer = null;
-	  
-	sendGoodbye();
+        if (closing) { process.exit(0); }
+        console.log("No response to DATA from server");
+        clearTimeout(timer);
+        timer = null;
+        sendGoodbye();
       }
     }, TIMEOUT_DURATION);
   }
@@ -152,7 +151,7 @@ process.stdin.on('end', function() {
       clearInterval(interval);
       sendGoodbye();
     }
-  }, 500);
+  }, DELAY_EOF_DURATION);
 });
 
 //////////////////////////////////////////
@@ -176,7 +175,6 @@ function makeHeaderString(requestType, data) {
 // Send a GOODBYE message to server
 ///////////////////////////////////
 function sendGoodbye() {
-  // send a GOODBYE to the server
   var goodbyeHeader = makeHeaderString(GOODBYE);
   clientSocket.send(goodbyeHeader, 0, HEADER_SIZE, serverPort,
     serverHost, function() {
