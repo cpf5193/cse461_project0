@@ -67,7 +67,7 @@ def main():
 ## addr: A duple (hostname, port) representing the address of the client
 ########################################################################
 def delegateMessage(msg, addr):
-  global sessions, timers
+  global timers, sessions
 
   # Get the header elements and the payload out of the message
   (magic, version, command, sequenceNumber, sessionId) = unpack(HEADER_FORMAT, msg[0:HEADER_SIZE])
@@ -89,9 +89,10 @@ def delegateMessage(msg, addr):
         print "%s [%d] GOODBYE from client." % (hex(sessionId), sessions[sessionId][0] + 1)
       sendGoodbye(sessionId)
     elif (sessions[sessionId][0] + 1 < sequenceNumber):
-      for x in range(sessions[sessionId][0]+1, sequenceNumber+1):
+      for x in range(sessions[sessionId][0]+1, sequenceNumber):
         print "%s [%d] Lost Packet!" % (hex(sessionId), x)
-      sessions[sessionId] = (sequenceNumber, addr)  
+      sessions[sessionId] = (sequenceNumber, addr)
+      handleData(sessionId, message) 
     elif (sessions[sessionId][0] == sequenceNumber):
       print "Duplicate packet"
       return
@@ -100,8 +101,6 @@ def delegateMessage(msg, addr):
     else:
       # Valid and expected packet, update session state
       sessions[sessionId] = (sequenceNumber, addr)
-      timers[sessionId].cancel()
-      timers[sessionId] = threading.Timer(INACTIVITY_DURATION, sendGoodbye, [sessionId])
       handleData(sessionId, message)
   elif (command == HELLO):
     # New session
@@ -119,7 +118,7 @@ def delegateMessage(msg, addr):
 ## sessionId: the id of the session from which a hello was sent
 ###############################################################
 def handleHello(sessionId):
-  global serverSeqNum, sessions, timers
+  global serverSeqNum, timers
   helloMsg = createMessage(HELLO, sessionId, None)
   addrPort = (sessions[sessionId][1][0], sessions[sessionId][1][1])
   serverSocket.sendto(helloMsg, addrPort)
@@ -137,6 +136,7 @@ def handleHello(sessionId):
 def handleData(sessionId, message):
   global serverSeqNum, timers
   aliveMsg = createMessage(ALIVE, sessionId, None)
+  timers[sessionId].cancel()
   serverSocket.sendto(aliveMsg, sessions[sessionId][1])
   serverSeqNum += 1
   print "%s [%d] %s" % (hex(sessionId), sessions[sessionId][0], message)
