@@ -44,7 +44,7 @@ var serverPort = process.argv[3];
 //////////////////////////////////
 // Send initial HELLO to server
 //////////////////////////////////
-var buf = new Buffer(makeHeaderString(HELLO));
+var buf = makeHeaderString(HELLO);
 clientSocket.send(buf, 0, HEADER_SIZE, serverPort, serverHost, function() {
   // Timeout if no response within TIMEOUT_DURATION milliseconds
   timer = setTimeout(function() {
@@ -63,6 +63,7 @@ sequenceNum++;
 // Handle messages from the server
 //////////////////////////////////
 clientSocket.on('message', function(message) {
+  command = message.readUInt8(COMMAND_OFFSET);
   if (command == HELLO) {
     // HELLO, cancel timer and transition to ready
     clearTimeout(timer);
@@ -108,12 +109,11 @@ reader.on('line', function(line) {
     sendGoodbye();
     return;
   }
-  var data = makeHeaderString(DATA) + input;
+  var data = makeHeaderString(DATA, input);
   //console.log(data);
-  var message = new Buffer(data);
 
   // Take the user input and send it to the server as DATA
-  clientSocket.send(message, 0, message.length, serverPort,
+  clientSocket.send(data, 0, data.length, serverPort,
     serverHost, function(err, bytes) {
       if (err) throw err;
   });
@@ -164,13 +164,23 @@ process.stdin.on('end', function() {
 //////////////////////////////////////////
 // Create a header based on the given type
 ////////////////////////////////////////// 
-function makeHeaderString(requestType) {
-  var buf = new Buffer(HEADER_SIZE);
-  header.writeUInt16BE(MAGIC, MAGIC_OFFSET);
-  header.writeUInt8(VERSION, VERSION_OFFSET);
-  header.writeUInt8(requestType, COMMAND_OFFSET);
-  header.writeUInt32BE(sequenceNum, SEQUENCE_OFFSET);
-  header.writeUInt32BE(sessionId, SESSION_OFFSET);
+function makeHeaderString(requestType, data) {
+  var headerSize = (data == null) ? HEADER_SIZE : HEADER_SIZE + data.length;
+  console.log("message size: " + headerSize);
+  var buf = new Buffer(headerSize);
+  console.log("magic: " + MAGIC);
+  buf.writeUInt16BE(MAGIC, MAGIC_OFFSET);
+  console.log("version: " + VERSION);
+  buf.writeUInt8(VERSION, VERSION_OFFSET);
+  console.log("requestType: " + requestType);
+  buf.writeUInt8(requestType, COMMAND_OFFSET);
+  console.log("sequenceNum: " + sequenceNum);
+  buf.writeUInt32BE(sequenceNum, SEQUENCE_OFFSET);
+  console.log("sessionId: " + sessionId);
+  buf.writeUInt32BE(parseInt(sessionId,16), SESSION_OFFSET);
+  if (data != null) {
+    buf.write(data, HEADER_SIZE); 
+  }
   return buf;
 }
 
@@ -180,7 +190,7 @@ function makeHeaderString(requestType) {
 function sendGoodbye() {
   // send a GOODBYE to the server
   var goodbyeHeader = makeHeaderString(GOODBYE);
-  clientSocket.send(new Buffer(goodbyeHeader), 0, HEADER_SIZE, serverPort,
+  clientSocket.send(goodbyeHeader, 0, HEADER_SIZE, serverPort,
     serverHost, function() {
       goodbyeTimer = setTimeout(function() {
 	      closing = true;
