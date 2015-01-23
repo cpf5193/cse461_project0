@@ -252,6 +252,9 @@ function endAll(errno) {
 	closing = true;
 	debug(JSON.stringify(Object.keys(sessions)));
 	var numSess = Object.keys(sessions).length
+	if(numSess < 1) {
+		process.exit(0);
+	}
 	for(var i = 0; i < numSess - 1; i++) {
 		var id = Object.keys(sessions)[i];
   		debug("sendGoodbye(" + i + ")");
