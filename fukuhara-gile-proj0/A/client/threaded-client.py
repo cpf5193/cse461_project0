@@ -11,7 +11,7 @@ from binascii import hexlify
 from random import randint
 
 #Header and Packet constants
-DEBUG_LEVEL = 1
+DEBUG_LEVEL = 0
 MAGIC = 0xC461
 VERSION = 1
 HELLO = 0

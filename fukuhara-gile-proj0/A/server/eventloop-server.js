@@ -19,7 +19,7 @@ var readline = require('readline');
 var tty = require('tty');
 
 //Header Constants
-var DEBUG_LEVEL = 1
+var DEBUG_LEVEL = 0
 var MAGIC = 0xC461
 var MAGIC_OFFSET = 0
 var MAGIC_LENGTH = 2
