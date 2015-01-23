@@ -139,7 +139,7 @@ function processData(id, seq, payload) {
 		} else {
 			sendAlive(id);
 			if (lastSeq < seq - 1) {
-				printLostPackets(id, lastSeq, seq, payload);
+				printLostPackets(id, lastSeq + 1, seq, payload);
 			}
 			console.log(linePrefix(id, seq) + payload);
 			sessions[id] = seq;
