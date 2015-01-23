@@ -24,7 +24,6 @@ MESSAGE_SIZE = 1024
 MAX_ID = 0xFFFFFFFF
 MIN_ID = 0x00000000
 TIMEOUT = 10.0
-TIMEOUT_CLOSE = 5.0
 
 #Sequence increments with each packet sent
 sequence = 0;
@@ -57,14 +56,14 @@ def waitAndClose():
 	global closing
 	closing = True
 	sendGoodbye()
-	closeTimer = threading.Timer(TIMEOUT_CLOSE, endSession)
+	closeTimer = threading.Timer(TIMEOUT, endSession)
 	closeTimer.start()
 	while True:
 		msg = receiveMessage()
 		if(msg is ALIVE):
 			debug("\n  Got ALIVE after EOF")
 			closeTimer.cancel()
-			closeTimer = threading.Timer(TIMEOUT_CLOSE, endSession)
+			closeTimer = threading.Timer(TIMEOUT, endSession)
 			closeTimer.start()
 		if(msg is GOODBYE):
 			endSession()
