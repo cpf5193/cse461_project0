@@ -4,7 +4,7 @@
 # Project 0
 
 # Simple client using threads
-import sys, socket, threading, os
+import sys, socket, threading, os, fileinput
 from struct import pack, unpack
 from collections import namedtuple
 from binascii import hexlify
@@ -118,6 +118,8 @@ def main():
 		
 	sendHello()
 		
+	global closing
+		
 	debug("Speaking to %s:%d" % (host, port))
 	debug("Example header: %s" % hexlify(header(1, 2, MAX_ID)));
 	
@@ -130,7 +132,6 @@ def main():
 				debug(timer.isAlive())
 			else:
 				debug("GOOOOOOOOOOOOOODBYEEEEEEEEEEEEEE")
-				global closing
 				closing = True
 				endSession()
 	except KeyboardInterrupt:
@@ -164,22 +165,29 @@ def sendGoodbye():
 	sock.send(header(GOODBYE, sequence, sessionId))
 
 def readStdin():
-	while True:
-		line = sys.stdin.readline();
-		if(not line):
-			debug("Read EOF")
-			print("eof")
-			waitAndClose()
-		elif(line.strip() is 'q' and tty):
-			debug("Read q")
-			endSession()
-		elif(sequence < 1):
-			continue
-		else:
+	if(tty):
+		while True:
+			line = sys.stdin.readline()
+			if(not line):
+				debug("Read EOF")
+				print("eof")
+				waitAndClose()
+			elif(line.strip() is 'q'):
+				debug("Read q")
+				endSession()
+			elif(sequence < 1):
+				continue
+			else:
+				debug("Read '" + line.strip() + "'")
+				if(not timer.isAlive):
+					retartTimer()
+				sendData(line.strip())
+	else:
+		for line in sys.stdin:
 			debug("Read '" + line.strip() + "'");
 			if(not timer.isAlive):
 				restartTimer()
-			sendData(line.strip());
+			sendData(line.strip())
 
 if __name__ == "__main__":
 	main()
