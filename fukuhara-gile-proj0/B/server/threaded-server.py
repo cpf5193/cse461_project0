@@ -173,6 +173,7 @@ def handleUserInput():
     except KeyboardInterrupt:
       print "\nInterrupted! Server shutting down."
       closeServer()
+    closeServer()
 
 ####################################################################
 ## Sends a goodbye message to the given session
