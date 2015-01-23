@@ -178,7 +178,7 @@ def sendHello():
 		restartTimer();
 		msg = receiveMessage();
 	except socket.error:
-		print("Cannot connect to " + argv[1] + ":" + argv[2])
+		print("Cannot connect to " + sys.argv[1] + ":" + sys.argv[2])
 		timer.cancel()
 		noHelloClose = threading.Timer(TIMEOUT, exit)
 		noHelloClose.start()
