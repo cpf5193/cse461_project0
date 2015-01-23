@@ -112,11 +112,15 @@ def main():
 	
 	debug("Connected to " + host + " " + str(port));
 
-
-	stdinThread = threading.Thread(target=readStdin, args=())
-	stdinThread.start()
+	if(tty):
+		stdinThread = threading.Thread(target=readStdin, args=())
+		stdinThread.start()
 		
 	sendHello()
+		
+	if(not tty):
+		fileThread = threading.Thread(target=readFile, args=())
+		fileThread.start()
 		
 	global closing
 		
@@ -149,7 +153,7 @@ def prependHeader(cmd, seq, id, message):
 	
 
 def sendData(payload):
-	debug("sending: " + payload);
+	debug("sending: [" + str(sequence) + "] " + payload);
 	sock.send(prependHeader(DATA, sequence, sessionId, payload));
 	incrementSequence()
 	
@@ -160,36 +164,37 @@ def sendHello():
 	if(msg != HELLO):
 		endSession()
 	timer.cancel()
-	incrementSequence()
+	global sequence
+	sequence = 1
 
 def sendGoodbye():
 	sock.send(header(GOODBYE, sequence, sessionId))
 
 def readStdin():
-	if(tty):
-		while True:
-			line = sys.stdin.readline()
-			if(not line):
-				debug("Read EOF")
-				print("eof")
-				waitAndClose()
-			elif(line.strip() is 'q'):
-				debug("Read q")
-				endSession()
-			elif(sequence < 1):
-				continue
-			else:
-				debug("Read '" + line.strip() + "'")
-				if(not timer.isAlive):
-					retartTimer()
-				sendData(line.strip())
-	else:
-		for line in sys.stdin:
-			debug("Read '" + line.strip() + "'");
+	while True:
+		line = sys.stdin.readline()
+		if(not line):
+			debug("Read EOF")
+			print("eof")
+			waitAndClose()
+		elif(line.strip() is 'q'):
+			debug("Read q")
+			endSession()
+		elif(sequence < 1):
+			continue
+		else:
+			debug("Read '" + line.strip() + "'")
 			if(not timer.isAlive):
-				restartTimer()
+				retartTimer()
 			sendData(line.strip())
-		waitAndClose()
+
+def readFile():
+	for line in sys.stdin:
+		debug("Read '" + line.strip() + "'");
+		if(not timer.isAlive):
+			restartTimer()
+		sendData(line.strip())
+	waitAndClose()
 
 if __name__ == "__main__":
 	main()
