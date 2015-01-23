@@ -165,15 +165,12 @@ def handleUserInput():
   # Look for 'q' lines and handle keyboard interrupt
   while True:
     try: # read from stdin line by line, looking for 'q'
-      line = ""
-      for char in sys.stdin.readline():
-        line += char
-      if line == "q\n":
+      line =  sys.stdin.readline()
+      if line == '' or line == "q\n":
         closeServer()
     except KeyboardInterrupt:
       print "\nInterrupted! Server shutting down."
       closeServer()
-    closeServer()
 
 ####################################################################
 ## Sends a goodbye message to the given session
