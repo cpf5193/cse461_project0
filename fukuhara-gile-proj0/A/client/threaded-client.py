@@ -11,7 +11,7 @@ from binascii import hexlify
 from random import randint
 
 #Header and Packet constants
-DEBUG_LEVEL = 1
+DEBUG_LEVEL = 0
 MAGIC = 0xC461
 VERSION = 1
 HELLO = 0
@@ -178,7 +178,7 @@ def sendHello():
 		restartTimer();
 		msg = receiveMessage();
 	except socket.error:
-		debug("Cannot connect to address and port")
+		print("Cannot connect to " + argv[1] + ":" + argv[2])
 		timer.cancel()
 		noHelloClose = threading.Timer(TIMEOUT, exit)
 		noHelloClose.start()
