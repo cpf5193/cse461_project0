@@ -45,6 +45,7 @@ var sessions = new Array();
 var timers = new Array();
 var remotes = new Array();
 var mySequence = 0;
+var closing = false;
 
 var portNum = process.argv[2];
 
@@ -73,13 +74,15 @@ process.stdin.on('end', function() {
 
 function endAll(errno) {
 	debug("endall()");
+	closing = true;
 	debug(JSON.stringify(Object.keys(sessions)));
-	Object.keys(remotes).forEach(function(i) {
+	var numSess = Object.keys(sessions).length
+	for(var i = 0; i < numSess - 1; i++) {
+		var id = Object.keys(sessions)[i];
   		debug("sendGoodbye(" + i + ")");
-		debug(JSON.stringify(remotes[i]));
-		sendGoodbye(i);
-	});
-	setTimeout(process.exit, 500);
+		sendGoodbye(id)
+	}
+	lastGoodbye(Object.keys(sessions)[numSess - 1]);
 }
 
 function Message(m) {
@@ -100,11 +103,14 @@ function linePrefix(id, seq) {
 // Handle messages from the server
 //////////////////////////////////
 port.on('message', function(msg, rinfo) {
+	if(closing) {
+		return;
+	}
 	if(msg.byteLength < HEADER_SIZE) {
 		console.log("Received packet less than minmum header size");
 		process.exit(1);
 	}
-	 
+		 
 	var message = new Message(msg);
 	
 	if(message.magicNum != MAGIC || message.version != 1) {
@@ -251,6 +257,12 @@ function Header(command, id) {
 	header.writeUInt32BE(mySequence, SEQUENCE_OFFSET);
 	header.writeUInt32BE(id, SESSION_OFFSET);
 	return header;
+}
+
+function lastGoodbye(id) {
+	debug("Sending final goodbye to " + id);
+	port.send(Header(GOODBYE, id), 0, HEADER_SIZE, remotes[id].port,
+		remotes[id].address, process.exit);
 }
 
 function sendMessage(command, id) {

@@ -107,7 +107,7 @@ def receiveMessage():
 def main():
 	host = sys.argv[1]
 	port = int(sys.argv[2])
-	
+
 	sock.connect((host, port));
 	
 	debug("Connected to " + host + " " + str(port));
@@ -116,7 +116,10 @@ def main():
 		stdinThread = threading.Thread(target=readStdin, args=())
 		stdinThread.start()
 		
-	sendHello()
+	try:
+		sendHello()
+	except socket.error:
+		endSession()
 		
 	if(not tty):
 		fileThread = threading.Thread(target=readFile, args=())
@@ -164,8 +167,7 @@ def sendHello():
 	if(msg != HELLO):
 		endSession()
 	timer.cancel()
-	global sequence
-	sequence = 1
+	incrementSequence()
 
 def sendGoodbye():
 	sock.send(header(GOODBYE, sequence, sessionId))
