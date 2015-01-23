@@ -149,6 +149,7 @@ def prependHeader(cmd, seq, id, message):
 	
 
 def sendData(payload):
+	debug("sending: " + payload);
 	sock.send(prependHeader(DATA, sequence, sessionId, payload));
 	incrementSequence()
 	
@@ -188,6 +189,7 @@ def readStdin():
 			if(not timer.isAlive):
 				restartTimer()
 			sendData(line.strip())
+		waitAndClose()
 
 if __name__ == "__main__":
 	main()
