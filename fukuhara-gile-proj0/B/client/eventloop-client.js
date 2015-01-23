@@ -4,7 +4,8 @@
 var datagram = require('dgram');
 var readline = require('readline');
 var tty = require('tty');
-
+var dns = require('dns');
+  
 ///////////////////////////////////////
 // Global state
 ///////////////////////////////////////
@@ -66,7 +67,8 @@ sequenceNum++;
 //////////////////////////////////
 // Handle messages from the server
 //////////////////////////////////
-clientSocket.on('message', function(message) {
+clientSocket.on('message', function(message, addr) {
+  serverHost = addr.address;
   command = message.readUInt8(COMMAND_OFFSET);
   if (command == HELLO) {
     // HELLO, cancel timer and transition to ready
