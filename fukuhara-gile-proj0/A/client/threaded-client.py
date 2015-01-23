@@ -29,7 +29,7 @@ TIMEOUT_CLOSE = 5.0
 #Sequence increments with each packet sent
 sequence = 0;
 #Session id uniquely identifies this client instance
-sessionId = 1#randint(MIN_ID, MAX_ID);
+sessionId = randint(MIN_ID, MAX_ID);
 #Allow for manual exit if connected by tty
 tty = sys.stdin.isatty()
 #UDP socket
@@ -117,7 +117,6 @@ def main():
 	stdinThread.start()
 		
 	sendHello()
-	restartTimer()
 		
 	debug("Speaking to %s:%d" % (host, port))
 	debug("Example header: %s" % hexlify(header(1, 2, MAX_ID)));

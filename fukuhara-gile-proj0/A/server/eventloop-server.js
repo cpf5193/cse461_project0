@@ -79,7 +79,7 @@ function endAll(errno) {
 		debug(JSON.stringify(remotes[i]));
 		sendGoodbye(i);
 	});
-	setTimeout(process.exit, 10000);
+	setTimeout(process.exit, 500);
 }
 
 function Message(m) {
