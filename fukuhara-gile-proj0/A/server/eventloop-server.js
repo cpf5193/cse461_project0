@@ -13,7 +13,7 @@ if (process.argv.length != 3) {
   process.exit(1);
 }
 
-//Import networkign libraries
+//Import networking libraries
 var datagram = require('dgram');
 var readline = require('readline');
 var tty = require('tty');
@@ -40,51 +40,22 @@ var HEADER_SIZE = SESSION_OFFSET + SESSION_LENGTH
 var MESSAGE_SIZE = 1024
 var TIMEOUT_DURATION = 20000;
 
-
+//Keep track of remote sessions information
 var sessions = new Array();
 var timers = new Array();
 var remotes = new Array();
+
+//Global flags for packet number and closing status
 var mySequence = 0;
 var closing = false;
 
+//Bind a UDP port according to command line arguments
 var portNum = process.argv[2];
-
 var port = datagram.createSocket('udp4');
 port.bind(portNum)
-
 console.log("Waiting on port " + portNum + "...");
 
-function debug(msg) {
-	if(DEBUG_LEVEL > 0) {
-		console.log("DEBUG::" + msg);
-	}
-}
-
-process.stdin.on('readable', function() {
-	var input = process.stdin.read();
-	if(input !== null && input.toString().trim() === 'q') {
-		endAll(0);
-	}
-});
-
-
-process.stdin.on('end', function() {
-	endAll(1);
-});
-
-function endAll(errno) {
-	debug("endall()");
-	closing = true;
-	debug(JSON.stringify(Object.keys(sessions)));
-	var numSess = Object.keys(sessions).length
-	for(var i = 0; i < numSess - 1; i++) {
-		var id = Object.keys(sessions)[i];
-  		debug("sendGoodbye(" + i + ")");
-		sendGoodbye(id)
-	}
-	lastGoodbye(Object.keys(sessions)[numSess - 1]);
-}
-
+//Constructor for reading a Datagram
 function Message(m) {
 	this.magicNum = m.readUInt16BE(MAGIC_OFFSET);
 	this.version = m.readUInt8(VERSION_OFFSET);
@@ -94,14 +65,18 @@ function Message(m) {
 	this.payload = m.slice(HEADER_SIZE);
 }
 
-function linePrefix(id, seq) {
-	return "0x" + id.toString(16) + " [" + 
-			seq + "] "
+//Constructor for a packet header to be sent
+function Header(command, id) {
+	var header = new Buffer(HEADER_SIZE);
+	header.writeUInt16BE(MAGIC, MAGIC_OFFSET);
+	header.writeUInt8(VERSION, VERSION_OFFSET);
+	header.writeUInt8(command, COMMAND_OFFSET);
+	header.writeUInt32BE(mySequence, SEQUENCE_OFFSET);
+	header.writeUInt32BE(id, SESSION_OFFSET);
+	return header;
 }
 
-//////////////////////////////////
-// Handle messages from the server
-//////////////////////////////////
+//Process client messages
 port.on('message', function(msg, rinfo) {
 	if(closing) {
 		return;
@@ -133,56 +108,28 @@ port.on('message', function(msg, rinfo) {
 	}
 });
 
+//Process a HELLO by returning a HELLO. Terminate if HELLO
+//is from an already-known session
 function processHello(id, seq, r) {
 	debug("processHello(" + id + ", " + seq + ", " + JSON.stringify(r)
 		+ ")");
 	if(sessionExists(id)) {
 		debug("Unexpected HELLO from " + id);
-		quit(1);
+		process.exit(1);
 	} else {
 		startSession(id, r);
 		console.log(linePrefix(id, seq) + "Session created");
 	}
 }
 
-function getSessionSeq(id) {
-	if(sessions[id] > -1) {
-		return sessions[id];
-	}
-	else return undefined;
-}
-
-function resetTimer(id) {
-	debug("resetTimer(" + id + ")");
-	clearTimeout(timers[id]);
-	timers[id] = setTimeout(function() {
-		sendGoodbye(id);
-	}, TIMEOUT_DURATION);
-}
-
-function startSession(id, r) {
-	sessions[id] = 0;
-	remotes[id] = r;
-	sendHello(id)
-	resetTimer(id);
-}
-
-function endSession(id) {
-	delete sessions[id];
-	delete remotes[id];
-	clearTimeout(timers[id]);
-	delete timers[id];
-}
-
-function sessionExists(id) {
-	return getSessionSeq(id) !== undefined;
-}
-
+//Process DATA from client by printing the packet payload
+//Terminate if DATA is from an unfamiliar client
+//Send and ALIVE back to the client and reset the timer
 function processData(id, seq, payload) {
 	debug("processData(" + id + " , " + seq + ", "+ payload + ")");
 	if(!sessionExists(id)) {
 		debug("Unepected DATA from " + id);
-		quit(0);
+		process.exit(1);
 	}
 	else {
 		var lastSeq = getSessionSeq(id);
@@ -200,16 +147,32 @@ function processData(id, seq, payload) {
 	}
 }
 
-
+//Process GOODBYE from client by sending a GOODBYE in return
+//Terminate if GOODBYE is from an unfamiliar client
 function processGoodbye(id, seq) {
 	debug("processGoodbye(" + id + ", " + seq + ")");
 	if(!sessionExists(id)) {
 		debug("Unexpected GOODBYE from " + id);
-		quit(1);
+		process.exit(1);
 	}
 	sendGoodbye(id);
 }
 
+//Sends message of type 'command' to client with session id 'id'
+function sendMessage(command, id) {
+	var head = Header(command, id);
+	if(!sessionExists(id)) {
+		process.exit(1)
+	}
+	debug("Sending: '" + JSON.stringify(new Message(head)) + "'");
+	debug("to: " + JSON.stringify(remotes[id]));
+	port.send(head, 0, HEADER_SIZE, remotes[id].port,
+		remotes[id].address);
+	mySequence++;
+}
+
+//Send GOODBYE to session with 'id' as its session id
+//and terminate its session
 function sendGoodbye(id) {
 	sendMessage(GOODBYE, id);
 	endSession(id);
@@ -219,25 +182,63 @@ function sendGoodbye(id) {
 	debug("remotes left: " + Object.keys(remotes).length);
 }
 
+//Send HELLO to client with session id 'id'
 function sendHello(id) {
 	sendMessage(HELLO, id);
 }
 
+//Send ALIVE to client with session id 'id'
 function sendAlive(id) {
 	resetTimer(id);
 	sessions[id]++;
 	sendMessage(ALIVE, id);
 }
 
-function goodbyePrefix(id) {
-	return "0x" + id.toString(16);
+//Start a session with session id 'id' and
+//remote host address information 'r'
+//Begin the timer for that session
+function startSession(id, r) {
+	sessions[id] = 0;
+	remotes[id] = r;
+	sendHello(id)
+	resetTimer(id);
 }
 
-function linePrefix(id, seq) {
-	return "0x" + id.toString(16) + " [" + seq + "] ";
+//Get the next expected packet sequence number for client with 
+//session id 'id'
+function getSessionSeq(id) {
+	if(sessions[id] > -1) {
+		return sessions[id];
+	}
+	else return undefined;
 }
 
-function printLostPackets(id, start, end, payload) {
+//True if session with session id 'id' exists, else false
+function sessionExists(id) {
+	return getSessionSeq(id) !== undefined;
+}
+
+//Terminates a session with session id 'id' and deletes associated
+//host information
+function endSession(id) {
+	delete sessions[id];
+	delete remotes[id];
+	clearTimeout(timers[id]);
+	delete timers[id];
+}
+
+//Resets the timer associated with session 'id'
+function resetTimer(id) {
+	debug("resetTimer(" + id + ")");
+	clearTimeout(timers[id]);
+	timers[id] = setTimeout(function() {
+		sendGoodbye(id);
+	}, TIMEOUT_DURATION);
+}
+
+//Print 'lost packet' message for each expected packet in the range
+//[start, end)
+function printLostPackets(id, start, end) {
 	debug("printLostPackets(" + id + ", " + start + 
 		", " + end + ")");
 	for(var i = start; i < end; i++) {
@@ -245,34 +246,55 @@ function printLostPackets(id, start, end, payload) {
 	}
 }
 
-function quit(errno) {
-	process.exit(errno);
+//End all sessions and terminate
+function endAll(errno) {
+	debug("endall()");
+	closing = true;
+	debug(JSON.stringify(Object.keys(sessions)));
+	var numSess = Object.keys(sessions).length
+	for(var i = 0; i < numSess - 1; i++) {
+		var id = Object.keys(sessions)[i];
+  		debug("sendGoodbye(" + i + ")");
+		sendGoodbye(id)
+	}
+	lastGoodbye(Object.keys(sessions)[numSess - 1]);
 }
 
-function Header(command, id) {
-	var header = new Buffer(HEADER_SIZE);
-	header.writeUInt16BE(MAGIC, MAGIC_OFFSET);
-	header.writeUInt8(VERSION, VERSION_OFFSET);
-	header.writeUInt8(command, COMMAND_OFFSET);
-	header.writeUInt32BE(mySequence, SEQUENCE_OFFSET);
-	header.writeUInt32BE(id, SESSION_OFFSET);
-	return header;
-}
 
+//Send a goodbye and terminate the server afterward
 function lastGoodbye(id) {
 	debug("Sending final goodbye to " + id);
 	port.send(Header(GOODBYE, id), 0, HEADER_SIZE, remotes[id].port,
 		remotes[id].address, process.exit);
 }
 
-function sendMessage(command, id) {
-	var head = Header(command, id);
-	if(!sessionExists(id)) {
-		quit(1)
+//Terminate if end of file is read from user input
+process.stdin.on('end', function() {
+	endAll(1);
+});
+
+//Terminate if q is read from user input
+process.stdin.on('readable', function() {
+	var input = process.stdin.read();
+	if(input !== null && input.toString().trim() === 'q') {
+		endAll(0);
 	}
-	debug("Sending: '" + JSON.stringify(new Message(head)) + "'");
-	debug("to: " + JSON.stringify(remotes[id]));
-	port.send(head, 0, HEADER_SIZE, remotes[id].port,
-		remotes[id].address);
-	mySequence++;
+});
+
+//Prefix Goodbyes without a sequence number
+function goodbyePrefix(id) {
+	return "0x" + id.toString(16);
+}
+
+//Prefix output with session id and packet sequence number
+function linePrefix(id, seq) {
+	return "0x" + id.toString(16) + " [" + 
+			seq + "] "
+}
+
+//Print diagnostic info if flag is set
+function debug(msg) {
+	if(DEBUG_LEVEL > 0) {
+		console.log("DEBUG::" + msg);
+	}
 }
