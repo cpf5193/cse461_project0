@@ -11,7 +11,7 @@ from binascii import hexlify
 from random import randint
 
 #Header and Packet constants
-DEBUG_LEVEL = 0
+DEBUG_LEVEL = 1
 MAGIC = 0xC461
 VERSION = 1
 HELLO = 0
@@ -127,10 +127,7 @@ def main():
 		stdinThread.start()
 
 	#Send and wait for a HELLO from the server
-	try:
-		sendHello()
-	except socket.error:
-		endSession()
+	sendHello()
 
 	#Use different input thread if input comes from piped file
 	if(not tty):
@@ -175,10 +172,18 @@ def sendData(payload):
 
 #send HELLO to ther server, and end the session
 #if a HELLO is not returned within TIMEOUT seconds
-def sendHello():
-	sock.send(header(HELLO, sequence, sessionId));
-	restartTimer();
-	msg = receiveMessage();
+def sendHello():	
+	try:
+		sock.send(header(HELLO, sequence, sessionId));
+		restartTimer();
+		msg = receiveMessage();
+	except socket.error:
+		debug("Cannot connect to address and port")
+		timer.cancel()
+		noHelloClose = threading.Timer(TIMEOUT, exit)
+		noHelloClose.start()
+		noHelloClose.join()
+		os._exit(1)
 	if(msg != HELLO):
 		endSession()
 	timer.cancel()
