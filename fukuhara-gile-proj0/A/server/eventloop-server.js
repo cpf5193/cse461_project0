@@ -18,8 +18,8 @@ var datagram = require('dgram');
 var readline = require('readline');
 var tty = require('tty');
 
-//Header 
-var DEBUG_LEVEL = 0
+//Header Constants
+var DEBUG_LEVEL = 1
 var MAGIC = 0xC461
 var MAGIC_OFFSET = 0
 var MAGIC_LENGTH = 2
@@ -44,6 +44,7 @@ var TIMEOUT_DURATION = 20000;
 var sessions = new Array();
 var timers = new Array();
 var remotes = new Array();
+var mySequence = 0;
 
 var portNum = process.argv[2];
 
@@ -72,10 +73,13 @@ process.stdin.on('end', function() {
 
 function endAll(errno) {
 	debug("endall()")
-	for(var i in Object.keys(sessions)) {
-		sendGoodbye(i);
+	debug(JSON.stringify(Object.keys(sessions)))
+	for(var i in sessions) {// bject.keys(sessions)) {
+		debug("sendGoodbye(" + i + ")");
+		//sendGoodbye(parseInt(i));
+		processGoodbye(i, 0);
 	}
-	quit(1);
+	quit(errno);
 }
 
 function Message(m) {
@@ -244,7 +248,7 @@ function Header(command, id) {
 	header.writeUInt16BE(MAGIC, MAGIC_OFFSET);
 	header.writeUInt8(VERSION, VERSION_OFFSET);
 	header.writeUInt8(command, COMMAND_OFFSET);
-	header.writeUInt32BE(0, SEQUENCE_OFFSET);
+	header.writeUInt32BE(mySequence, SEQUENCE_OFFSET);
 	header.writeUInt32BE(id, SESSION_OFFSET);
 	return header;
 }
@@ -257,4 +261,5 @@ function sendMessage(command, id) {
 	debug("Sending: '" + JSON.stringify(new Message(head)) + "'");
 	port.send(head, 0, HEADER_SIZE, remotes[id].port,
 		remotes[id].address);
+	mySequence++;
 }

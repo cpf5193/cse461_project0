@@ -4,14 +4,14 @@
 # Project 0
 
 # Simple client using threads
-
 import sys, socket, threading, os
 from struct import pack, unpack
 from collections import namedtuple
 from binascii import hexlify
 from random import randint
 
-DEBUG_LEVEL = 0
+#Header and Packet constants
+DEBUG_LEVEL = 1
 MAGIC = 0xC461
 VERSION = 1
 HELLO = 0
@@ -24,32 +24,43 @@ MESSAGE_SIZE = 1024
 MAX_ID = 0xFFFFFFFF
 MIN_ID = 0x00000000
 TIMEOUT = 10.0
-TIMEOUT_CLOSE = 0.5
+TIMEOUT_CLOSE = 5.0
 
+#Sequence increments with each packet sent
 sequence = 0;
+#Session id uniquely identifies this client instance
 sessionId = randint(MIN_ID, MAX_ID);
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-closing = False
+#Allow for manual exit if connected by tty
 tty = sys.stdin.isatty()
+#UDP socket
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+#Global flag to indicate the client will stop reading input
+closing = False
 
+#Increments the sequence number of the next packet
 def incrementSequence():
 	global sequence
 	sequence += 1
 
+#Close the session 
 def endSession():
 	debug("endSession()");
-	sendGoodbye()
+	if(not closing):
+		sendGoodbye()
 	os._exit(0);
 
 def waitAndClose():
 	debug("waitAndClose()")
+	timer.cancel()
 	global closing
 	closing = True
+	sendGoodbye()
 	closeTimer = threading.Timer(TIMEOUT_CLOSE, endSession)
 	closeTimer.start()
 	while True:
 		msg = receiveMessage()
 		if(msg is ALIVE):
+			debug("\n  Got ALIVE after EOF")
 			closeTimer.cancel()
 			closeTimer = threading.Timer(TIMEOUT_CLOSE, endSession)
 			closeTimer.start()
@@ -63,7 +74,7 @@ def restartTimer():
 	global timer
 	debug("restartTimer()");
 	timer.cancel()
-	timer = threading.Timer(TIMEOUT, endSession)
+	timer = threading.Timer(TIMEOUT, waitAndClose)
 	timer.start()
 
 def header(cmd, seq, id):
@@ -81,9 +92,11 @@ def validateHeader(msg):
 	return cmd
 	
 def receiveMessage():
+	debug("receiveMessage()")
 	msg = sock.recv(HEADER_SIZE)
 	debug("Message length: " +  str(len(msg)))
 	cmd = validateHeader(msg)
+	debug("cmd = " + str(cmd))
 	if(len(msg) != HEADER_SIZE or cmd < 0):
 		debug("Improperly formatted header")
 		endSession();
@@ -117,6 +130,7 @@ def main():
 				timer.cancel()
 				debug(timer.isAlive())
 			else:
+				debug("GOOOOOOOOOOOOOODBYEEEEEEEEEEEEEE")
 				endSession()
 	except KeyboardInterrupt:
 		debug("KeyboardInterrupt\n")
@@ -162,7 +176,8 @@ def readStdin():
 			continue
 		else:
 			debug("Read '" + line.strip() + "'");
-			restartTimer();
+			if(not timer.isAlive):
+				restartTimer()
 			sendData(line.strip());
 
 if __name__ == "__main__":
