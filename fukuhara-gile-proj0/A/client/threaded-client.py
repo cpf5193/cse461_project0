@@ -11,7 +11,7 @@ from binascii import hexlify
 from random import randint
 
 #Header and Packet constants
-DEBUG_LEVEL = 1
+DEBUG_LEVEL = 0
 MAGIC = 0xC461
 VERSION = 1
 HELLO = 0
@@ -24,7 +24,6 @@ MESSAGE_SIZE = 1024
 MAX_ID = 0xFFFFFFFF
 MIN_ID = 0x00000000
 TIMEOUT = 10.0
-TIMEOUT_CLOSE = 5.0
 
 #Sequence increments with each packet sent
 sequence = 0;
@@ -57,14 +56,14 @@ def waitAndClose():
 	global closing
 	closing = True
 	sendGoodbye()
-	closeTimer = threading.Timer(TIMEOUT_CLOSE, endSession)
+	closeTimer = threading.Timer(TIMEOUT, endSession)
 	closeTimer.start()
 	while True:
 		msg = receiveMessage()
 		if(msg is ALIVE):
 			debug("\n  Got ALIVE after EOF")
 			closeTimer.cancel()
-			closeTimer = threading.Timer(TIMEOUT_CLOSE, endSession)
+			closeTimer = threading.Timer(TIMEOUT, endSession)
 			closeTimer.start()
 		if(msg is GOODBYE):
 			endSession()
@@ -128,10 +127,7 @@ def main():
 		stdinThread.start()
 
 	#Send and wait for a HELLO from the server
-	try:
-		sendHello()
-	except socket.error:
-		endSession()
+	sendHello()
 
 	#Use different input thread if input comes from piped file
 	if(not tty):
@@ -176,10 +172,18 @@ def sendData(payload):
 
 #send HELLO to ther server, and end the session
 #if a HELLO is not returned within TIMEOUT seconds
-def sendHello():
-	sock.send(header(HELLO, sequence, sessionId));
-	restartTimer();
-	msg = receiveMessage();
+def sendHello():	
+	try:
+		sock.send(header(HELLO, sequence, sessionId));
+		restartTimer();
+		msg = receiveMessage();
+	except socket.error:
+		print("Cannot connect to " + sys.argv[1] + ":" + sys.argv[2])
+		timer.cancel()
+		noHelloClose = threading.Timer(TIMEOUT, exit)
+		noHelloClose.start()
+		noHelloClose.join()
+		os._exit(1)
 	if(msg != HELLO):
 		endSession()
 	timer.cancel()
@@ -220,6 +224,7 @@ def readFile():
 		if(not timer.isAlive):
 			restartTimer()
 		sendData(line.strip())
+	print("eof")
 	waitAndClose()
 
 if __name__ == "__main__":

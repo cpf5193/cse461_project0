@@ -19,7 +19,7 @@ var readline = require('readline');
 var tty = require('tty');
 
 //Header Constants
-var DEBUG_LEVEL = 1
+var DEBUG_LEVEL = 0
 var MAGIC = 0xC461
 var MAGIC_OFFSET = 0
 var MAGIC_LENGTH = 2
@@ -38,7 +38,7 @@ var SESSION_OFFSET = SEQUENCE_OFFSET + SEQUENCE_LENGTH
 var SESSION_LENGTH = 4
 var HEADER_SIZE = SESSION_OFFSET + SESSION_LENGTH
 var MESSAGE_SIZE = 1024
-var TIMEOUT_DURATION = 20000;
+var TIMEOUT_DURATION = 60000;
 
 //Keep track of remote sessions information
 var sessions = new Array();
