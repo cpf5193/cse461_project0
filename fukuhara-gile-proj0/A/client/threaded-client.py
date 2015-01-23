@@ -49,6 +49,8 @@ def endSession():
 		sendGoodbye()
 	os._exit(0);
 
+#Wait for the close timeout, and then close the session
+#The close timeout resets for each ALIVE message received
 def waitAndClose():
 	debug("waitAndClose()")
 	timer.cancel()
@@ -67,9 +69,11 @@ def waitAndClose():
 		if(msg is GOODBYE):
 			endSession()
 
+#Set a global timer to transition to the closing state after
+#TIMEOUT seconds
 timer = threading.Timer(TIMEOUT, waitAndClose)
-	
 
+#Restart the global timeout
 def restartTimer():
 	global timer
 	debug("restartTimer()");
@@ -77,20 +81,26 @@ def restartTimer():
 	timer = threading.Timer(TIMEOUT, waitAndClose)
 	timer.start()
 
+#Create a header with the magic number,
+#version number command id, sequence number, and 
+#session id
 def header(cmd, seq, id):
 	return pack(HEADER_FORMAT, MAGIC, VERSION, cmd , seq, id);
 
+#Print diagnostic information if global flag is set
 def debug(message):
 	if(DEBUG_LEVEL > 0):
 		print("DEBUG::" + str(message))
 		
+#Ensure that a received message has correct header format
 def validateHeader(msg):
 	(magic, version, cmd, seq, id) = unpack(HEADER_FORMAT, msg)
 	debug(msg)
 	if(magic != MAGIC or version != VERSION or id != sessionId):
 		return -1
 	return cmd
-	
+
+##Receive a message from the remote server
 def receiveMessage():
 	debug("receiveMessage()")
 	msg = sock.recv(HEADER_SIZE)
@@ -102,34 +112,38 @@ def receiveMessage():
 		endSession();
 	return cmd
 
-
-
+#Connect to a remote server and listen for ALIVE messages,
+#end the session if a GOODBYE is heard
 def main():
+	#Set up the port
 	host = sys.argv[1]
 	port = int(sys.argv[2])
-
 	sock.connect((host, port));
 	
 	debug("Connected to " + host + " " + str(port));
 
+	#Use different input thread if input comes from tty
 	if(tty):
 		stdinThread = threading.Thread(target=readStdin, args=())
 		stdinThread.start()
-		
+
+	#Send and wait for a HELLO from the server
 	try:
 		sendHello()
 	except socket.error:
 		endSession()
-		
+
+	#Use different input thread if input comes from piped file
 	if(not tty):
 		fileThread = threading.Thread(target=readFile, args=())
 		fileThread.start()
 		
-	global closing
-		
 	debug("Speaking to %s:%d" % (host, port))
-	debug("Example header: %s" % hexlify(header(1, 2, MAX_ID)));
+	debug("Example header: %s" % hexlify(header(1, 2, MAX_ID)));		
 	
+	#Listen for ALIVE messages to reset the timer,
+	#and transition to closing state if GOODBYE is found
+	global closing
 	try:
 		while True and not closing:
 			msg = receiveMessage();
@@ -138,7 +152,7 @@ def main():
 				timer.cancel()
 				debug(timer.isAlive())
 			else:
-				debug("GOOOOOOOOOOOOOODBYEEEEEEEEEEEEEE")
+				debug("GOODBYE from server")
 				closing = True
 				endSession()
 	except KeyboardInterrupt:
@@ -147,19 +161,21 @@ def main():
 	except socket.error:
 		debug("Connection refused")
 		endSession()
-		
-		
 
-		
+#Prepend a header to a string payload for a particular
+#command, sequence number, and session id
 def prependHeader(cmd, seq, id, message):
 	return "%s%s" % (header(cmd, seq, id), message)
-	
 
+#Send a datagram to the remote server and increment
+#the packet sequencenumber
 def sendData(payload):
 	debug("sending: [" + str(sequence) + "] " + payload);
 	sock.send(prependHeader(DATA, sequence, sessionId, payload));
 	incrementSequence()
-	
+
+#send HELLO to ther server, and end the session
+#if a HELLO is not returned within TIMEOUT seconds
 def sendHello():
 	sock.send(header(HELLO, sequence, sessionId));
 	restartTimer();
@@ -169,9 +185,14 @@ def sendHello():
 	timer.cancel()
 	incrementSequence()
 
+#send GOODBYE to the server
 def sendGoodbye():
+	debug("SENDING GOODBYE")
 	sock.send(header(GOODBYE, sequence, sessionId))
 
+#Read from a TTY. Send lines to the server that are not 'q'.
+#Transition to closing state if end of file is reached.
+#Set the global timeout if it hasn't been set
 def readStdin():
 	while True:
 		line = sys.stdin.readline()
@@ -190,6 +211,9 @@ def readStdin():
 				retartTimer()
 			sendData(line.strip())
 
+#Read from a piped file. Send lines to the server
+#until end of file is reached.
+#Set the global timeout if it hasn't been set
 def readFile():
 	for line in sys.stdin:
 		debug("Read '" + line.strip() + "'");
