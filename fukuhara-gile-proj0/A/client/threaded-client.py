@@ -219,6 +219,7 @@ def readFile():
 		if(not timer.isAlive):
 			restartTimer()
 		sendData(line.strip())
+	print("eof")
 	waitAndClose()
 
 if __name__ == "__main__":
