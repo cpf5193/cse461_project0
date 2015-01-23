@@ -29,7 +29,7 @@ TIMEOUT_CLOSE = 5.0
 #Sequence increments with each packet sent
 sequence = 0;
 #Session id uniquely identifies this client instance
-sessionId = randint(MIN_ID, MAX_ID);
+sessionId = 1#randint(MIN_ID, MAX_ID);
 #Allow for manual exit if connected by tty
 tty = sys.stdin.isatty()
 #UDP socket
@@ -131,6 +131,8 @@ def main():
 				debug(timer.isAlive())
 			else:
 				debug("GOOOOOOOOOOOOOODBYEEEEEEEEEEEEEE")
+				global closing
+				closing = True
 				endSession()
 	except KeyboardInterrupt:
 		debug("KeyboardInterrupt\n")

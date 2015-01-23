@@ -68,18 +68,18 @@ process.stdin.on('readable', function() {
 
 
 process.stdin.on('end', function() {
-	endAll(0);
+	endAll(1);
 });
 
 function endAll(errno) {
-	debug("endall()")
-	debug(JSON.stringify(Object.keys(sessions)))
-	for(var i in sessions) {// bject.keys(sessions)) {
-		debug("sendGoodbye(" + i + ")");
-		//sendGoodbye(parseInt(i));
-		processGoodbye(i, 0);
-	}
-	quit(errno);
+	debug("endall()");
+	debug(JSON.stringify(Object.keys(sessions)));
+	Object.keys(remotes).forEach(function(i) {
+  		debug("sendGoodbye(" + i + ")");
+		debug(JSON.stringify(remotes[i]));
+		sendGoodbye(i);
+	});
+	setTimeout(process.exit, 10000);
 }
 
 function Message(m) {
@@ -259,6 +259,7 @@ function sendMessage(command, id) {
 		quit(1)
 	}
 	debug("Sending: '" + JSON.stringify(new Message(head)) + "'");
+	debug("to: " + JSON.stringify(remotes[id]));
 	port.send(head, 0, HEADER_SIZE, remotes[id].port,
 		remotes[id].address);
 	mySequence++;
